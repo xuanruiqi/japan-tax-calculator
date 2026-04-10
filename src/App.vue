@@ -7,6 +7,7 @@ import {
   type DeductionEntry, type DeductionType,
   DEDUCTION_DEFS, DEDUCTION_ORDER, calculateDeductionAmount, getCashCost
 } from './data/deductions';
+import DonutChart, { type PieSlice } from './components/DonutChart.vue';
 
 const currentLocale = ref<'en' | 'ja'>('en');
 const t = computed(() => translations[currentLocale.value]);
@@ -167,6 +168,54 @@ const results = computed(() => {
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(value);
 };
+
+// Pie chart slices
+const pieSlices = computed((): PieSlice[] => {
+  const r = results.value;
+  const locale = currentLocale.value;
+
+  const furusatoEntry = deductionEntries.value.find(e => e.type === 'furusato');
+  const furusatoDonation = furusatoEntry ? getCashCost(furusatoEntry) : 0;
+  const idecoAmount = totalCashCost.value - furusatoDonation;
+
+  return [
+    {
+      label: locale === 'ja' ? '健康保険・介護保険' : 'Health & Nursing Care',
+      value: r.healthInsurance + r.kaigoInsurance,
+      color: '#6fcfad',
+    },
+    {
+      label: locale === 'ja' ? '厚生年金' : 'Pension',
+      value: r.pension,
+      color: '#3b82f6',
+    },
+    {
+      label: locale === 'ja' ? '所得税' : 'Income Tax',
+      value: r.incomeTax,
+      color: '#f59e0b',
+    },
+    {
+      label: locale === 'ja' ? '住民税' : 'Resident Tax',
+      value: r.residentTax,
+      color: '#a78bfa',
+    },
+    {
+      label: locale === 'ja' ? 'iDeCo等掛金' : 'iDeCo Contributions',
+      value: idecoAmount,
+      color: '#fb923c',
+    },
+    {
+      label: locale === 'ja' ? 'ふるさと納税 寄附金' : 'Furusato Donations',
+      value: furusatoDonation,
+      color: '#e879a0',
+    },
+    {
+      label: locale === 'ja' ? '手取り' : 'Take-home',
+      value: Math.max(0, r.netPay - totalCashCost.value),
+      color: '#22223b',
+    },
+  ];
+});
 </script>
 
 <template>
@@ -537,6 +586,17 @@ const formatCurrency = (value: number) => {
         </div>
       </div>
     </div>
+
+    <!-- Visualization Panel -->
+    <div class="panel viz-panel">
+      <h2 class="viz-title">{{ currentLocale === 'ja' ? '年収の内訳' : 'Income Breakdown' }}</h2>
+      <p class="viz-sub">{{ currentLocale === 'ja' ? '年間の給与控除割合' : 'Annual gross income allocation' }}</p>
+      <DonutChart
+        :slices="pieSlices"
+        :center-label="formatCurrency(results.annualGross)"
+        :center-sub="currentLocale === 'ja' ? '年収' : 'Gross'"
+      />
+    </div>
   </div>
 </template>
 
@@ -601,6 +661,41 @@ const formatCurrency = (value: number) => {
   background: #fdfdfd;
   box-shadow: 4px 0 12px rgba(0, 0, 0, 0.01);
   z-index: 1;
+}
+
+.viz-panel {
+  flex: 1 1 0;
+  min-width: 280px;
+  background: #fafafa;
+  border-right: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 3rem 2rem;
+  overflow-y: auto;
+}
+
+.viz-panel > * {
+  width: 100%;
+  max-width: 340px;
+}
+
+.viz-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #111;
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+.viz-sub {
+  font-size: 0.85rem;
+  color: #999;
+  margin-bottom: 2rem;
+  text-align: center;
 }
 
 .header {

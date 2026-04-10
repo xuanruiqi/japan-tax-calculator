@@ -74,6 +74,7 @@ export const DEDUCTION_DEFS: Record<DeductionType, DeductionMeta> = {
     inputLabelJa: '寄附金合計 (円)',
     inputIsCount: false,
     isTaxCredit: true,
+    hasCashCost: true, // full donation leaves user's pocket; tax credits offset (donation-2000) back
   },
   ideco: {
     type: 'ideco',
@@ -218,6 +219,8 @@ export function getCashCost(entry: DeductionEntry): number {
   switch (entry.type) {
     case 'ideco':
       return Math.min(entry.value, 23000) * 12;
+    case 'furusato':
+      return entry.value; // full donation amount goes out of pocket; tax credits offset it partially
     default:
       return 0;
   }
