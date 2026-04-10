@@ -22,6 +22,9 @@ export interface TaxCalculationResult {
   monthlyNet: number;
   bonusNet: number;
   employmentInsurance: number;
+  nationalPension: number;
+  nationalHealthInsurance: number;
+  businessIncome: number;
   healthBracket: number;
   pensionBracket: number;
   healthStandardRemuneration: number;
@@ -81,7 +84,7 @@ const brackets = [
   { min: 1360000, max: Infinity, value: 1390000 }
 ];
 
-function getStandardRemunerationGrade(salary: number, maxBracketValue: number): { value: number, grade: number } {
+export function getStandardRemunerationGrade(salary: number, maxBracketValue: number): { value: number, grade: number } {
   if (salary <= 0) return { value: 0, grade: 0 };
   for (let i = 0; i < brackets.length; i++) {
     const bracket = brackets[i];
@@ -108,9 +111,17 @@ export interface TaxCalculationOptions {
   cityIncomeRate?: number;
   prefPerCapita?: number;
   cityPerCapita?: number;
-  additionalDeductions?: number; // sum of all 所得控除 entered by user (excludes furusato)
-  furusatoNetDonation?: number;  // (donation - 2,000) — applied as direct tax credit, not income deduction
-  homeLoanCredit?: number;       // 住宅ローン控除額 — applied before reconstruction surtax
+  primaryJoinsSocialInsurance?: boolean; // whether primary job has SI enrollment (default true)
+  nationalPensionAmount?: number;        // flat 国民年金 amount (when not in 厚生年金)
+  nationalHealthInsuranceAmount?: number; // 国民健康保険 total (when not in 健康保険)
+  additionalSalaryGross?: number; // gross salary from non-primary jobs
+  additionalHealthInsurance?: number;  // health insurance from non-primary workplaces
+  additionalKaigoInsurance?: number;   // kaigo insurance from non-primary workplaces
+  additionalPension?: number;          // pension from non-primary workplaces
+  businessIncome?: number;        // net 事業所得 (revenue - expenses), summed across all entries
+  additionalDeductions?: number;  // sum of all 所得控除 entered by user (excludes furusato)
+  furusatoNetDonation?: number;   // (donation - 2,000) — applied as direct tax credit, not income deduction
+  homeLoanCredit?: number;        // 住宅ローン控除額 — applied before reconstruction surtax
 }
 
 export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: number, options: TaxCalculationOptions = {}): TaxCalculationResult {
@@ -121,8 +132,12 @@ export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: n
   const EMP_INS_RATE = options.employmentInsuranceRate !== undefined ? options.employmentInsuranceRate : 0.006; // Default 0.6%
   const previousYearGross = options.previousYearGross ?? null;
 
-  const healthObj = getStandardRemunerationGrade(monthlySalary, 1390000);
-  const pensionObj = getStandardRemunerationGrade(monthlySalary, 650000);
+  const primaryJoinsSI = options.primaryJoinsSocialInsurance !== false; // default true
+  const siSalary = primaryJoinsSI ? monthlySalary : 0;
+  const siBonus = primaryJoinsSI ? annualBonus : 0;
+
+  const healthObj = getStandardRemunerationGrade(siSalary, 1390000);
+  const pensionObj = getStandardRemunerationGrade(siSalary, 650000);
 
   const monthlyStandard = healthObj.value;
   const healthBracket = healthObj.grade;
@@ -135,58 +150,69 @@ export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: n
   const monthlyKaigo = Math.floor(monthlyStandard * KAIGO_RATE);
   const monthlyPension = Math.floor(monthlyStandardPension * PENSION_RATE);
 
-  const bonusStandardHealth = Math.min(Math.floor(annualBonus / 1000) * 1000, 5730000);
-  const bonusStandardPension = Math.min(Math.floor(annualBonus / 1000) * 1000, 1500000);
+  const bonusStandardHealth = Math.min(Math.floor(siBonus / 1000) * 1000, 5730000);
+  const bonusStandardPension = Math.min(Math.floor(siBonus / 1000) * 1000, 1500000);
 
   const bonusHealth = Math.floor(bonusStandardHealth * HEALTH_INS_RATE);
   const bonusKaigo = Math.floor(bonusStandardHealth * KAIGO_RATE);
   const bonusPension = Math.floor(bonusStandardPension * PENSION_RATE);
 
-  const annualHealth = monthlyHealth * 12 + bonusHealth;
-  const annualKaigo = monthlyKaigo * 12 + bonusKaigo;
-  const annualPension = monthlyPension * 12 + bonusPension;
+  const primaryAnnualHealth = monthlyHealth * 12 + bonusHealth;
+  const primaryAnnualKaigo = monthlyKaigo * 12 + bonusKaigo;
+  const primaryAnnualPension = monthlyPension * 12 + bonusPension;
+
+  const annualHealth = primaryAnnualHealth + (options.additionalHealthInsurance ?? 0);
+  const annualKaigo = primaryAnnualKaigo + (options.additionalKaigoInsurance ?? 0);
+  const annualPension = primaryAnnualPension + (options.additionalPension ?? 0);
 
   // --- Income ---
-  const annualGross = monthlySalary * 12 + annualBonus;
+  const primarySalaryGross = monthlySalary * 12 + annualBonus;
+  const additionalSalaryGross = options.additionalSalaryGross ?? 0;
+  const totalSalaryGross = primarySalaryGross + additionalSalaryGross;
+  const businessIncome = options.businessIncome ?? 0;
+  const annualGross = totalSalaryGross + businessIncome;
 
-  // --- Employment Insurance (雇用保険) — calculated on gross pay ---
-  const annualEmploymentInsurance = Math.floor(annualGross * EMP_INS_RATE);
+  // --- Employment Insurance (雇用保険) — calculated on primary salary gross ---
+  const annualEmploymentInsurance = Math.floor(primarySalaryGross * EMP_INS_RATE);
   const monthlyEmploymentInsurance = Math.floor(monthlySalary * EMP_INS_RATE);
 
-  const totalSocialInsurance = annualHealth + annualKaigo + annualPension + annualEmploymentInsurance;
+  const nationalPension = options.nationalPensionAmount ?? 0;
+  const nationalHealthInsurance = options.nationalHealthInsuranceAmount ?? 0;
+  const totalSocialInsurance = annualHealth + annualKaigo + annualPension + nationalPension + nationalHealthInsurance + annualEmploymentInsurance;
 
-  // --- Employment Income Deduction (給与所得控除) ---
+  // --- Employment Income Deduction (給与所得控除) — on total salary gross ---
   let employmentIncomeDeduction = 0;
-  if (annualGross <= 1625000) {
-    employmentIncomeDeduction = Math.min(annualGross, 550000); // Wait, actually standard deduction is min 550,000 but if gross < 550,000 it is gross.
-  } else if (annualGross <= 1800000) {
-    employmentIncomeDeduction = annualGross * 0.4 - 100000;
-  } else if (annualGross <= 3600000) {
-    employmentIncomeDeduction = annualGross * 0.3 + 80000;
-  } else if (annualGross <= 6600000) {
-    employmentIncomeDeduction = annualGross * 0.2 + 440000;
-  } else if (annualGross <= 8500000) {
-    employmentIncomeDeduction = annualGross * 0.1 + 1100000;
+  if (totalSalaryGross <= 1625000) {
+    employmentIncomeDeduction = Math.min(totalSalaryGross, 550000);
+  } else if (totalSalaryGross <= 1800000) {
+    employmentIncomeDeduction = totalSalaryGross * 0.4 - 100000;
+  } else if (totalSalaryGross <= 3600000) {
+    employmentIncomeDeduction = totalSalaryGross * 0.3 + 80000;
+  } else if (totalSalaryGross <= 6600000) {
+    employmentIncomeDeduction = totalSalaryGross * 0.2 + 440000;
+  } else if (totalSalaryGross <= 8500000) {
+    employmentIncomeDeduction = totalSalaryGross * 0.1 + 1100000;
   } else {
     employmentIncomeDeduction = 1950000;
   }
 
-  const employmentIncome = Math.max(0, annualGross - employmentIncomeDeduction);
+  const employmentIncome = Math.max(0, totalSalaryGross - employmentIncomeDeduction);
+  const totalIncome = employmentIncome + businessIncome;
 
   // --- Basic Exemption ---
   let incomeTaxBasicExemption = 480000;
-  if (annualGross > 24000000 && annualGross <= 24500000) incomeTaxBasicExemption = 320000;
-  else if (annualGross > 24500000 && annualGross <= 25000000) incomeTaxBasicExemption = 160000;
-  else if (annualGross > 25000000) incomeTaxBasicExemption = 0;
+  if (totalIncome > 24000000 && totalIncome <= 24500000) incomeTaxBasicExemption = 320000;
+  else if (totalIncome > 24500000 && totalIncome <= 25000000) incomeTaxBasicExemption = 160000;
+  else if (totalIncome > 25000000) incomeTaxBasicExemption = 0;
 
   let residentTaxBasicExemption = 430000;
-  if (annualGross > 24000000 && annualGross <= 24500000) residentTaxBasicExemption = 290000;
-  else if (annualGross > 24500000 && annualGross <= 25000000) residentTaxBasicExemption = 150000;
-  else if (annualGross > 25000000) residentTaxBasicExemption = 0;
+  if (totalIncome > 24000000 && totalIncome <= 24500000) residentTaxBasicExemption = 290000;
+  else if (totalIncome > 24500000 && totalIncome <= 25000000) residentTaxBasicExemption = 150000;
+  else if (totalIncome > 25000000) residentTaxBasicExemption = 0;
 
   // --- Taxable Income ---
   const extraDeductions = options.additionalDeductions ?? 0;
-  const taxableIncomeTax = Math.max(0, Math.floor((employmentIncome - totalSocialInsurance - incomeTaxBasicExemption - extraDeductions) / 1000) * 1000);
+  const taxableIncomeTax = Math.max(0, Math.floor((totalIncome - totalSocialInsurance - incomeTaxBasicExemption - extraDeductions) / 1000) * 1000);
 
   // --- Resident Tax Pre-Calculation (based on previous year income if provided) ---
   const residentTaxBaseGross = (previousYearGross !== null && previousYearGross >= 0) ? previousYearGross : annualGross;
@@ -309,6 +335,9 @@ export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: n
     kaigoInsurance: annualKaigo,
     pension: annualPension,
     employmentInsurance: annualEmploymentInsurance,
+    nationalPension,
+    nationalHealthInsurance,
+    businessIncome,
     incomeTax: adjustedIncomeTax,
     marginalRate,
     effectiveMarginalRate,

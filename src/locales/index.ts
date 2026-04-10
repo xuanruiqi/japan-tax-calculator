@@ -20,6 +20,24 @@ export interface LocaleStrings {
   prevIncome: string;
   prevIncomeSub: string;
   prevIncomePlaceholder: string;
+  addIncome: string;
+  salaryIncomeName: string;
+  salaryIncomeDesc: string;
+  businessIncomeName: string;
+  businessIncomeDesc: string;
+  businessRevenue: string;
+  businessExpenses: string;
+  primaryJob: string;
+  removeIncome: string;
+  joinsSocialInsurance: string;
+  enrolledEmployeeSI: string;
+  nationalPension: string;
+  nationalHealthInsurance: string;
+  nhiModeManual: string;
+  nhiModeAuto: string;
+  nhiTotalAmount: string;
+  nhiKintowari: string;
+  nhiShotokuwari: string;
   ageUnder40: string;
   age40to64: string;
   age65over: string;
@@ -108,7 +126,7 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     subtitle: 'Estimate your take-home pay',
     
     // Sections
-    locationSettings: 'Location Settings',
+    locationSettings: 'Basic Settings',
     incomeDetails: 'Income Details',
     annualBreakdown: 'Annual Breakdown',
     monthlyPay: 'Monthly Take-home',
@@ -131,7 +149,25 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     prevIncome: 'Previous Year Gross Income (JPY)',
     prevIncomeSub: '(Optional: For accurate Resident Tax)',
     prevIncomePlaceholder: 'Same as current if empty',
-    
+    addIncome: 'Add Income',
+    salaryIncomeName: 'Salaried Income',
+    salaryIncomeDesc: 'Employment income (給与所得)',
+    businessIncomeName: 'Business / Miscellaneous Income',
+    businessIncomeDesc: 'Self-employment, side business, etc. (事業所得・雑所得)',
+    businessRevenue: 'Annual Revenue (JPY)',
+    businessExpenses: 'Annual Expenses (JPY)',
+    primaryJob: 'Primary',
+    removeIncome: 'Remove',
+    joinsSocialInsurance: 'Joins Health Insurance & Pension here',
+    enrolledEmployeeSI: 'Enrolled in Health Insurance & Employee Pension (社会保険)',
+    nationalPension: 'National Pension',
+    nationalHealthInsurance: 'National Health Insurance',
+    nhiModeManual: 'Enter total amount',
+    nhiModeAuto: 'Calculate from rates',
+    nhiTotalAmount: 'Annual NHI Amount (JPY)',
+    nhiKintowari: 'Per-capita levy (均等割 JPY/year)',
+    nhiShotokuwari: 'Income-based rate (所得割 %)',
+
     // Options
     ageUnder40: 'Under 40 - No Kaigo',
     age40to64: '40 to 64 - Pay Kaigo',
@@ -227,7 +263,7 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     title: '手取り計算ツール (日本)',
     subtitle: 'あなたの手取り額を計算します',
     
-    locationSettings: '地域設定',
+    locationSettings: '基本設定',
     incomeDetails: '収入情報',
     annualBreakdown: '年間内訳',
     monthlyPay: '月々の手取り',
@@ -248,7 +284,25 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     prevIncome: '前年の総収入 (円)',
     prevIncomeSub: '(任意: 住民税の正確な計算に必要)',
     prevIncomePlaceholder: '空欄の場合は今年の収入と同額とみなす',
-    
+    addIncome: '所得を追加',
+    salaryIncomeName: '給与所得',
+    salaryIncomeDesc: '給与・賞与による所得',
+    businessIncomeName: '事業所得・雑所得',
+    businessIncomeDesc: '自営業・副業等の所得',
+    businessRevenue: '年間売上 (円)',
+    businessExpenses: '年間経費 (円)',
+    primaryJob: '主たる勤務先',
+    removeIncome: '削除',
+    joinsSocialInsurance: '健康保険・厚生年金に加入',
+    enrolledEmployeeSI: '健康保険・厚生年金に加入（社会保険）',
+    nationalPension: '国民年金',
+    nationalHealthInsurance: '国民健康保険',
+    nhiModeManual: '金額を直接入力',
+    nhiModeAuto: '料率から計算',
+    nhiTotalAmount: '年間国保額 (円)',
+    nhiKintowari: '均等割額 (円/年)',
+    nhiShotokuwari: '所得割率 (%)',
+
     ageUnder40: '40歳未満 - 介護保険なし',
     age40to64: '40歳〜64歳 - 介護保険あり',
     age65over: '65歳以上 - 別途請求',

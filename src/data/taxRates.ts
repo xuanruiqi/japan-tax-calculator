@@ -8,176 +8,254 @@ export interface TaxRateInfo {
 export interface PrefectureOverrides {
   default: TaxRateInfo;
   cities: {
-    [cityName: string]: TaxRateInfo;
+    [cityId: string]: TaxRateInfo;
   }
 }
 
-// Reiwa 6 (2024) Kyokai Kenpo Rates (Employee Share = Total / 2)
-export const KYOKAI_KENPO_RATES: Record<string, number> = {
-  "北海道 (Hokkaido)": 5.105,
-  "青森県 (Aomori)": 4.885,
-  "岩手県 (Iwate)": 4.84,
-  "宮城県 (Miyagi)": 4.885,
-  "秋田県 (Akita)": 4.935,
-  "山形県 (Yamagata)": 4.88,
-  "福島県 (Fukushima)": 4.88,
-  "茨城県 (Ibaraki)": 4.895,
-  "栃木県 (Tochigi)": 4.885,
-  "群馬県 (Gunma)": 4.88,
-  "埼玉県 (Saitama)": 4.89,
-  "千葉県 (Chiba)": 4.895,
-  "東京都 (Tokyo)": 4.99,
-  "神奈川県 (Kanagawa)": 5.01,
-  "新潟県 (Niigata)": 4.835,
-  "富山県 (Toyama)": 4.79,
-  "石川県 (Ishikawa)": 4.90,
-  "福井県 (Fukui)": 4.915,
-  "山梨県 (Yamanashi)": 4.915,
-  "長野県 (Nagano)": 4.83,
-  "岐阜県 (Gifu)": 4.915,
-  "静岡県 (Shizuoka)": 4.865,
-  "愛知県 (Aichi)": 4.94,
-  "三重県 (Mie)": 4.865,
-  "滋賀県 (Shiga)": 4.89,
-  "京都府 (Kyoto)": 4.98,
-  "大阪府 (Osaka)": 5.17,
-  "兵庫県 (Hyogo)": 5.025,
-  "奈良県 (Nara)": 4.94,
-  "和歌山県 (Wakayama)": 4.935,
-  "鳥取県 (Tottori)": 4.91,
-  "島根県 (Shimane)": 4.935,
-  "岡山県 (Okayama)": 4.985,
-  "広島県 (Hiroshima)": 4.96,
-  "山口県 (Yamaguchi)": 4.985,
-  "徳島県 (Tokushima)": 5.06,
-  "香川県 (Kagawa)": 5.02,
-  "愛媛県 (Ehime)": 4.965,
-  "高知県 (Kochi)": 5.025,
-  "福岡県 (Fukuoka)": 5.17,
-  "佐賀県 (Saga)": 5.255,
-  "長崎県 (Nagasaki)": 5.155,
-  "熊本県 (Kumamoto)": 5.075,
-  "大分県 (Oita)": 5.03,
-  "宮崎県 (Miyazaki)": 4.925,
-  "鹿児島県 (Kagoshima)": 5.03,
-  "沖縄県 (Okinawa)": 4.975
+export type LocaleNames = Record<string, string>;
+
+// Display names — extensible to any locale by adding keys (e.g. zh, ko, …)
+export const PREFECTURE_NAMES: Record<string, LocaleNames> = {
+  hokkaido:   { ja: '北海道',   en: 'Hokkaido' },
+  aomori:     { ja: '青森県',   en: 'Aomori' },
+  iwate:      { ja: '岩手県',   en: 'Iwate' },
+  miyagi:     { ja: '宮城県',   en: 'Miyagi' },
+  akita:      { ja: '秋田県',   en: 'Akita' },
+  yamagata:   { ja: '山形県',   en: 'Yamagata' },
+  fukushima:  { ja: '福島県',   en: 'Fukushima' },
+  ibaraki:    { ja: '茨城県',   en: 'Ibaraki' },
+  tochigi:    { ja: '栃木県',   en: 'Tochigi' },
+  gunma:      { ja: '群馬県',   en: 'Gunma' },
+  saitama:    { ja: '埼玉県',   en: 'Saitama' },
+  chiba:      { ja: '千葉県',   en: 'Chiba' },
+  tokyo:      { ja: '東京都',   en: 'Tokyo' },
+  kanagawa:   { ja: '神奈川県', en: 'Kanagawa' },
+  niigata:    { ja: '新潟県',   en: 'Niigata' },
+  toyama:     { ja: '富山県',   en: 'Toyama' },
+  ishikawa:   { ja: '石川県',   en: 'Ishikawa' },
+  fukui:      { ja: '福井県',   en: 'Fukui' },
+  yamanashi:  { ja: '山梨県',   en: 'Yamanashi' },
+  nagano:     { ja: '長野県',   en: 'Nagano' },
+  gifu:       { ja: '岐阜県',   en: 'Gifu' },
+  shizuoka:   { ja: '静岡県',   en: 'Shizuoka' },
+  aichi:      { ja: '愛知県',   en: 'Aichi' },
+  mie:        { ja: '三重県',   en: 'Mie' },
+  shiga:      { ja: '滋賀県',   en: 'Shiga' },
+  kyoto:      { ja: '京都府',   en: 'Kyoto' },
+  osaka:      { ja: '大阪府',   en: 'Osaka' },
+  hyogo:      { ja: '兵庫県',   en: 'Hyogo' },
+  nara:       { ja: '奈良県',   en: 'Nara' },
+  wakayama:   { ja: '和歌山県', en: 'Wakayama' },
+  tottori:    { ja: '鳥取県',   en: 'Tottori' },
+  shimane:    { ja: '島根県',   en: 'Shimane' },
+  okayama:    { ja: '岡山県',   en: 'Okayama' },
+  hiroshima:  { ja: '広島県',   en: 'Hiroshima' },
+  yamaguchi:  { ja: '山口県',   en: 'Yamaguchi' },
+  tokushima:  { ja: '徳島県',   en: 'Tokushima' },
+  kagawa:     { ja: '香川県',   en: 'Kagawa' },
+  ehime:      { ja: '愛媛県',   en: 'Ehime' },
+  kochi:      { ja: '高知県',   en: 'Kochi' },
+  fukuoka:    { ja: '福岡県',   en: 'Fukuoka' },
+  saga:       { ja: '佐賀県',   en: 'Saga' },
+  nagasaki:   { ja: '長崎県',   en: 'Nagasaki' },
+  kumamoto:   { ja: '熊本県',   en: 'Kumamoto' },
+  oita:       { ja: '大分県',   en: 'Oita' },
+  miyazaki:   { ja: '宮崎県',   en: 'Miyazaki' },
+  kagoshima:  { ja: '鹿児島県', en: 'Kagoshima' },
+  okinawa:    { ja: '沖縄県',   en: 'Okinawa' },
 };
 
-export const PREFECTURES_LIST = Object.keys(KYOKAI_KENPO_RATES);
+export const CITY_NAMES: Record<string, LocaleNames> = {
+  sapporo:        { ja: '札幌市',     en: 'Sapporo' },
+  yubari:         { ja: '夕張市',     en: 'Yubari' },
+  sendai:         { ja: '仙台市',     en: 'Sendai' },
+  saitama_city:   { ja: 'さいたま市', en: 'Saitama City' },
+  chiba_city:     { ja: '千葉市',     en: 'Chiba City' },
+  yokohama:       { ja: '横浜市',     en: 'Yokohama' },
+  kawasaki:       { ja: '川崎市',     en: 'Kawasaki' },
+  sagamihara:     { ja: '相模原市',   en: 'Sagamihara' },
+  niigata_city:   { ja: '新潟市',     en: 'Niigata City' },
+  shizuoka_city:  { ja: '静岡市',     en: 'Shizuoka City' },
+  hamamatsu:      { ja: '浜松市',     en: 'Hamamatsu' },
+  nagoya:         { ja: '名古屋市',   en: 'Nagoya' },
+  kyoto_city:     { ja: '京都市',     en: 'Kyoto City' },
+  osaka_city:     { ja: '大阪市',     en: 'Osaka City' },
+  sakai:          { ja: '堺市',       en: 'Sakai' },
+  kobe:           { ja: '神戸市',     en: 'Kobe' },
+  toyooka:        { ja: '豊岡市',     en: 'Toyooka' },
+  okayama_city:   { ja: '岡山市',     en: 'Okayama City' },
+  hiroshima_city: { ja: '広島市',     en: 'Hiroshima City' },
+  fukuoka_city:   { ja: '福岡市',     en: 'Fukuoka City' },
+  kitakyushu:     { ja: '北九州市',   en: 'Kitakyushu' },
+  kumamoto_city:  { ja: '熊本市',     en: 'Kumamoto City' },
+};
+
+export const PREFECTURES_LIST = Object.keys(PREFECTURE_NAMES);
+
+// Reiwa 6 (2024) Kyokai Kenpo Rates (Employee Share = Total / 2)
+export const KYOKAI_KENPO_RATES: Record<string, number> = {
+  hokkaido:   5.105,
+  aomori:     4.885,
+  iwate:      4.84,
+  miyagi:     4.885,
+  akita:      4.935,
+  yamagata:   4.88,
+  fukushima:  4.88,
+  ibaraki:    4.895,
+  tochigi:    4.885,
+  gunma:      4.88,
+  saitama:    4.89,
+  chiba:      4.895,
+  tokyo:      4.99,
+  kanagawa:   5.01,
+  niigata:    4.835,
+  toyama:     4.79,
+  ishikawa:   4.90,
+  fukui:      4.915,
+  yamanashi:  4.915,
+  nagano:     4.83,
+  gifu:       4.915,
+  shizuoka:   4.865,
+  aichi:      4.94,
+  mie:        4.865,
+  shiga:      4.89,
+  kyoto:      4.98,
+  osaka:      5.17,
+  hyogo:      5.025,
+  nara:       4.94,
+  wakayama:   4.935,
+  tottori:    4.91,
+  shimane:    4.935,
+  okayama:    4.985,
+  hiroshima:  4.96,
+  yamaguchi:  4.985,
+  tokushima:  5.06,
+  kagawa:     5.02,
+  ehime:      4.965,
+  kochi:      5.025,
+  fukuoka:    5.17,
+  saga:       5.255,
+  nagasaki:   5.155,
+  kumamoto:   5.075,
+  oita:       5.03,
+  miyazaki:   4.925,
+  kagoshima:  5.03,
+  okinawa:    4.975,
+};
 
 // Common structures
 const baseStandard: TaxRateInfo = { prefIncomeRate: 0.04, cityIncomeRate: 0.06, prefPerCapita: 1500, cityPerCapita: 3500 };
 const designatedCity: TaxRateInfo = { prefIncomeRate: 0.02, cityIncomeRate: 0.08, prefPerCapita: 1500, cityPerCapita: 3500 };
 
 export const RESIDENT_TAX_RATES: Record<string, PrefectureOverrides> = {
-  "北海道 (Hokkaido)": {
+  hokkaido: {
     default: { ...baseStandard },
-    cities: { "札幌市 (Sapporo)": { ...designatedCity }, "夕張市 (Yubari)": { ...baseStandard, cityIncomeRate: 0.065 } }
+    cities: { sapporo: { ...designatedCity }, yubari: { ...baseStandard, cityIncomeRate: 0.065 } }
   },
-  "青森県 (Aomori)": { default: { ...baseStandard }, cities: {} },
-  "岩手県 (Iwate)": { default: { ...baseStandard, prefPerCapita: 2500 }, cities: {} },
-  "宮城県 (Miyagi)": {
+  aomori:    { default: { ...baseStandard }, cities: {} },
+  iwate:     { default: { ...baseStandard, prefPerCapita: 2500 }, cities: {} },
+  miyagi: {
     default: { ...baseStandard, prefPerCapita: 2700 },
-    cities: { "仙台市 (Sendai)": { ...designatedCity, prefPerCapita: 2700 } }
+    cities: { sendai: { ...designatedCity, prefPerCapita: 2700 } }
   },
-  "秋田県 (Akita)": { default: { ...baseStandard, prefPerCapita: 2300 }, cities: {} },
-  "山形県 (Yamagata)": { default: { ...baseStandard, prefPerCapita: 2500 }, cities: {} },
-  "福島県 (Fukushima)": { default: { ...baseStandard, prefPerCapita: 2500 }, cities: {} },
-  "茨城県 (Ibaraki)": { default: { ...baseStandard, prefPerCapita: 2500 }, cities: {} },
-  "栃木県 (Tochigi)": { default: { ...baseStandard, prefPerCapita: 2200 }, cities: {} },
-  "群馬県 (Gunma)": { default: { ...baseStandard, prefPerCapita: 2200 }, cities: {} },
-  "埼玉県 (Saitama)": {
+  akita:     { default: { ...baseStandard, prefPerCapita: 2300 }, cities: {} },
+  yamagata:  { default: { ...baseStandard, prefPerCapita: 2500 }, cities: {} },
+  fukushima: { default: { ...baseStandard, prefPerCapita: 2500 }, cities: {} },
+  ibaraki:   { default: { ...baseStandard, prefPerCapita: 2500 }, cities: {} },
+  tochigi:   { default: { ...baseStandard, prefPerCapita: 2200 }, cities: {} },
+  gunma:     { default: { ...baseStandard, prefPerCapita: 2200 }, cities: {} },
+  saitama: {
     default: { ...baseStandard },
-    cities: { "さいたま市 (Saitama City)": { ...designatedCity } }
+    cities: { saitama_city: { ...designatedCity } }
   },
-  "千葉県 (Chiba)": {
+  chiba: {
     default: { ...baseStandard },
-    cities: { "千葉市 (Chiba City)": { ...designatedCity } }
+    cities: { chiba_city: { ...designatedCity } }
   },
-  "東京都 (Tokyo)": { default: { ...baseStandard }, cities: {} },
-  "神奈川県 (Kanagawa)": {
+  tokyo:     { default: { ...baseStandard }, cities: {} },
+  kanagawa: {
     default: { prefIncomeRate: 0.04025, cityIncomeRate: 0.06, prefPerCapita: 1800, cityPerCapita: 3500 },
     cities: {
-      "横浜市 (Yokohama)": { prefIncomeRate: 0.02025, cityIncomeRate: 0.08, prefPerCapita: 1800, cityPerCapita: 4400 },
-      "川崎市 (Kawasaki)": { prefIncomeRate: 0.02025, cityIncomeRate: 0.08, prefPerCapita: 1800, cityPerCapita: 3500 },
-      "相模原市 (Sagamihara)": { prefIncomeRate: 0.02025, cityIncomeRate: 0.08, prefPerCapita: 1800, cityPerCapita: 3500 }
+      yokohama:   { prefIncomeRate: 0.02025, cityIncomeRate: 0.08, prefPerCapita: 1800, cityPerCapita: 4400 },
+      kawasaki:    { prefIncomeRate: 0.02025, cityIncomeRate: 0.08, prefPerCapita: 1800, cityPerCapita: 3500 },
+      sagamihara:  { prefIncomeRate: 0.02025, cityIncomeRate: 0.08, prefPerCapita: 1800, cityPerCapita: 3500 },
     }
   },
-  "新潟県 (Niigata)": {
+  niigata: {
     default: { ...baseStandard },
-    cities: { "新潟市 (Niigata City)": { ...designatedCity } }
+    cities: { niigata_city: { ...designatedCity } }
   },
-  "富山県 (Toyama)": { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
-  "石川県 (Ishikawa)": { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
-  "福井県 (Fukui)": { default: { ...baseStandard }, cities: {} },
-  "山梨県 (Yamanashi)": { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
-  "長野県 (Nagano)": { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
-  "岐阜県 (Gifu)": { default: { ...baseStandard, prefPerCapita: 2500 }, cities: {} },
-  "静岡県 (Shizuoka)": {
+  toyama:    { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
+  ishikawa:  { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
+  fukui:     { default: { ...baseStandard }, cities: {} },
+  yamanashi: { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
+  nagano:    { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
+  gifu:      { default: { ...baseStandard, prefPerCapita: 2500 }, cities: {} },
+  shizuoka: {
     default: { ...baseStandard, prefPerCapita: 1900 },
     cities: {
-      "静岡市 (Shizuoka City)": { ...designatedCity, prefPerCapita: 1900 },
-      "浜松市 (Hamamatsu)": { ...designatedCity, prefPerCapita: 1900 }
+      shizuoka_city: { ...designatedCity, prefPerCapita: 1900 },
+      hamamatsu:     { ...designatedCity, prefPerCapita: 1900 },
     }
   },
-  "愛知県 (Aichi)": {
+  aichi: {
     default: { ...baseStandard, prefPerCapita: 2000 },
     cities: {
-      "名古屋市 (Nagoya)": { prefIncomeRate: 0.02, cityIncomeRate: 0.077, prefPerCapita: 2000, cityPerCapita: 3300 }
+      nagoya: { prefIncomeRate: 0.02, cityIncomeRate: 0.077, prefPerCapita: 2000, cityPerCapita: 3300 },
     }
   },
-  "三重県 (Mie)": { default: { ...baseStandard, prefPerCapita: 2500 }, cities: {} },
-  "滋賀県 (Shiga)": { default: { ...baseStandard, prefPerCapita: 2300 }, cities: {} },
-  "京都府 (Kyoto)": {
+  mie:       { default: { ...baseStandard, prefPerCapita: 2500 }, cities: {} },
+  shiga:     { default: { ...baseStandard, prefPerCapita: 2300 }, cities: {} },
+  kyoto: {
     default: { ...baseStandard, prefPerCapita: 2100 },
-    cities: { "京都市 (Kyoto City)": { ...designatedCity, prefPerCapita: 2100 } }
+    cities: { kyoto_city: { ...designatedCity, prefPerCapita: 2100 } }
   },
-  "大阪府 (Osaka)": {
+  osaka: {
     default: { ...baseStandard, prefPerCapita: 1800 },
     cities: {
-      "大阪市 (Osaka City)": { ...designatedCity, prefPerCapita: 1800 },
-      "堺市 (Sakai)": { ...designatedCity, prefPerCapita: 1800 }
+      osaka_city: { ...designatedCity, prefPerCapita: 1800 },
+      sakai:      { ...designatedCity, prefPerCapita: 1800 },
     }
   },
-  "兵庫県 (Hyogo)": {
+  hyogo: {
     default: { ...baseStandard, prefPerCapita: 2300 },
     cities: {
-      "神戸市 (Kobe)": { ...designatedCity, prefPerCapita: 2300 },
-      "豊岡市 (Toyooka)": { prefIncomeRate: 0.04, cityIncomeRate: 0.061, prefPerCapita: 2300, cityPerCapita: 3500 }
+      kobe:    { ...designatedCity, prefPerCapita: 2300 },
+      toyooka: { prefIncomeRate: 0.04, cityIncomeRate: 0.061, prefPerCapita: 2300, cityPerCapita: 3500 },
     }
   },
-  "奈良県 (Nara)": { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
-  "和歌山県 (Wakayama)": { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
-  "鳥取県 (Tottori)": { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
-  "島根県 (Shimane)": { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
-  "岡山県 (Okayama)": {
+  nara:      { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
+  wakayama:  { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
+  tottori:   { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
+  shimane:   { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
+  okayama: {
     default: { ...baseStandard, prefPerCapita: 2000 },
-    cities: { "岡山市 (Okayama City)": { ...designatedCity, prefPerCapita: 2000 } }
+    cities: { okayama_city: { ...designatedCity, prefPerCapita: 2000 } }
   },
-  "広島県 (Hiroshima)": {
+  hiroshima: {
     default: { ...baseStandard, prefPerCapita: 2000 },
-    cities: { "広島市 (Hiroshima City)": { ...designatedCity, prefPerCapita: 2000 } }
+    cities: { hiroshima_city: { ...designatedCity, prefPerCapita: 2000 } }
   },
-  "山口県 (Yamaguchi)": { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
-  "徳島県 (Tokushima)": { default: { ...baseStandard }, cities: {} },
-  "香川県 (Kagawa)": { default: { ...baseStandard }, cities: {} },
-  "愛媛県 (Ehime)": { default: { ...baseStandard, prefPerCapita: 2200 }, cities: {} },
-  "高知県 (Kochi)": { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
-  "福岡県 (Fukuoka)": {
+  yamaguchi: { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
+  tokushima: { default: { ...baseStandard }, cities: {} },
+  kagawa:    { default: { ...baseStandard }, cities: {} },
+  ehime:     { default: { ...baseStandard, prefPerCapita: 2200 }, cities: {} },
+  kochi:     { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
+  fukuoka: {
     default: { ...baseStandard, prefPerCapita: 2000 },
     cities: {
-      "福岡市 (Fukuoka City)": { ...designatedCity, prefPerCapita: 2000 },
-      "北九州市 (Kitakyushu)": { ...designatedCity, prefPerCapita: 2000 }
+      fukuoka_city: { ...designatedCity, prefPerCapita: 2000 },
+      kitakyushu:   { ...designatedCity, prefPerCapita: 2000 },
     }
   },
-  "佐賀県 (Saga)": { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
-  "長崎県 (Nagasaki)": { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
-  "熊本県 (Kumamoto)": {
+  saga:      { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
+  nagasaki:  { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
+  kumamoto: {
     default: { ...baseStandard, prefPerCapita: 2000 },
-    cities: { "熊本市 (Kumamoto City)": { ...designatedCity, prefPerCapita: 2000 } }
+    cities: { kumamoto_city: { ...designatedCity, prefPerCapita: 2000 } }
   },
-  "大分県 (Oita)": { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
-  "宮崎県 (Miyazaki)": { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
-  "鹿児島県 (Kagoshima)": { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
-  "沖縄県 (Okinawa)": { default: { ...baseStandard }, cities: {} }
+  oita:      { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
+  miyazaki:  { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
+  kagoshima: { default: { ...baseStandard, prefPerCapita: 2000 }, cities: {} },
+  okinawa:   { default: { ...baseStandard }, cities: {} },
 };

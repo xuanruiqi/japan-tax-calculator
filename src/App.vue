@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { calculateTaxesAndInsurance } from './utils/taxCalculation';
-import { PREFECTURES_LIST, KYOKAI_KENPO_RATES, RESIDENT_TAX_RATES } from './data/taxRates';
+import { calculateTaxesAndInsurance, getStandardRemunerationGrade } from './utils/taxCalculation';
+import { PREFECTURES_LIST, KYOKAI_KENPO_RATES, RESIDENT_TAX_RATES, PREFECTURE_NAMES, CITY_NAMES } from './data/taxRates';
 import { translations } from './locales';
 import {
   type DeductionEntry, type DeductionType,
@@ -14,16 +14,55 @@ import HomeLoanWizard from './components/HomeLoanWizard.vue';
 const currentLocale = ref<'en' | 'ja'>('ja');
 const t = computed(() => translations[currentLocale.value]);
 
-const monthlySalaryInput = ref<number | null>(300000);
-const annualBonusInput = ref<number | null>(0);
-const previousYearIncomeInput = ref<number | null>(null);
+const previousYearIncomeInput = ref<number | null | ''>(null);
 
-const employmentPrefecture = ref<string>("東京都 (Tokyo)");
-const residencePrefecture = ref<string>("東京都 (Tokyo)");
-const residenceCity = ref<string>("Standard / Other (その他市区町村)");
+type IncomeType = 'salary' | 'business';
+
+interface IncomeEntry {
+  id: string;
+  type: IncomeType;
+  name: string;                   // user-given name for this income source
+  monthlySalary: number | null;  // salary only
+  annualBonus: number | null;    // salary only
+  revenue: number | null;        // business only
+  expenses: number | null;       // business only
+  joinsSocialInsurance: boolean;  // salary only — whether health/pension is enrolled at this workplace
+}
+
+const incomeEntries = ref<IncomeEntry[]>([
+  { id: 'salary-default', type: 'salary', name: '', monthlySalary: 300000, annualBonus: 0, revenue: null, expenses: null, joinsSocialInsurance: true },
+]);
+const showIncomePicker = ref(false);
+
+const addIncomeEntry = (type: IncomeType) => {
+  incomeEntries.value.push({
+    id: `${type}-${Date.now()}`,
+    type,
+    name: '',
+    monthlySalary: type === 'salary' ? 0 : null,
+    annualBonus: type === 'salary' ? 0 : null,
+    revenue: type === 'business' ? 0 : null,
+    expenses: type === 'business' ? 0 : null,
+    joinsSocialInsurance: false,
+  });
+  showIncomePicker.value = false;
+};
+
+const removeIncomeEntry = (id: string) => {
+  incomeEntries.value = incomeEntries.value.filter(e => e.id !== id);
+};
+
+// Derived values for calculation — primary salary is the first salary entry
+const primarySalaryEntry = computed(() => incomeEntries.value.find(e => e.type === 'salary'));
+const monthlySalaryInput = computed(() => primarySalaryEntry.value?.monthlySalary ?? 0);
+const annualBonusInput = computed(() => primarySalaryEntry.value?.annualBonus ?? 0);
+
+const employmentPrefecture = ref<string>("tokyo");
+const residencePrefecture = ref<string>("tokyo");
+const residenceCity = ref<string>("standard");
 
 const handleResidencePrefectureChange = () => {
-  residenceCity.value = "Standard / Other (その他市区町村)";
+  residenceCity.value = "standard";
 };
 
 const availableCities = computed(() => {
@@ -32,11 +71,22 @@ const availableCities = computed(() => {
   return Object.keys(pref.cities);
 });
 
+const prefName = (id: string) => PREFECTURE_NAMES[id]?.[currentLocale.value] ?? id;
+const cityName = (id: string) => CITY_NAMES[id]?.[currentLocale.value] ?? id;
+
 type KenpoType = 'kyokai' | 'its' | 'tjk' | 'other';
 const selectedKenpo = ref<KenpoType>('kyokai');
 
 type AgeGroupType = 'under40' | '40to64' | '65over';
 const ageGroup = ref<AgeGroupType>('under40');
+
+const enrolledEmployeeSI = ref<boolean>(true);
+
+type NhiMode = 'manual' | 'auto';
+const nhiMode = ref<NhiMode>('manual');
+const nhiManualAmount = ref<number | null>(null);
+const nhiKintowari = ref<number | null>(null);
+const nhiShotokuwariRate = ref<number | null>(null);
 
 const showAdvancedOptions = ref<boolean>(false);
 
@@ -82,6 +132,130 @@ const handleKenpoChange = () => {
   updateKaigoRate();
 };
 
+// --- Deductions ---
+const deductionEntries = ref<DeductionEntry[]>([]);
+
+// --- State Persistence ---
+const STORAGE_KEY = 'tax-calculator-state';
+
+interface SavedState {
+  currentLocale: 'en' | 'ja';
+  enrolledEmployeeSI: boolean;
+  nhiMode: NhiMode;
+  nhiManualAmount: number | null;
+  nhiKintowari: number | null;
+  nhiShotokuwariRate: number | null;
+  incomeEntries: IncomeEntry[];
+  previousYearIncomeInput: number | null | '';
+  employmentPrefecture: string;
+  residencePrefecture: string;
+  residenceCity: string;
+  selectedKenpo: KenpoType;
+  ageGroup: AgeGroupType;
+  showAdvancedOptions: boolean;
+  customHealthRate: number | null;
+  customKaigoRate: number | null;
+  customPensionRate: number | null;
+  customEmploymentInsRate: number | null;
+  selectedIndustry: IndustryType;
+  deductionEntries: DeductionEntry[];
+}
+
+const saveState = () => {
+  const state: SavedState = {
+    currentLocale: currentLocale.value,
+    enrolledEmployeeSI: enrolledEmployeeSI.value,
+    nhiMode: nhiMode.value,
+    nhiManualAmount: nhiManualAmount.value,
+    nhiKintowari: nhiKintowari.value,
+    nhiShotokuwariRate: nhiShotokuwariRate.value,
+    incomeEntries: incomeEntries.value,
+    previousYearIncomeInput: previousYearIncomeInput.value,
+    employmentPrefecture: employmentPrefecture.value,
+    residencePrefecture: residencePrefecture.value,
+    residenceCity: residenceCity.value,
+    selectedKenpo: selectedKenpo.value,
+    ageGroup: ageGroup.value,
+    showAdvancedOptions: showAdvancedOptions.value,
+    customHealthRate: customHealthRate.value,
+    customKaigoRate: customKaigoRate.value,
+    customPensionRate: customPensionRate.value,
+    customEmploymentInsRate: customEmploymentInsRate.value,
+    selectedIndustry: selectedIndustry.value,
+    deductionEntries: deductionEntries.value,
+  };
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+};
+
+const loadState = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const s: Partial<SavedState> = JSON.parse(raw);
+    if (s.currentLocale != null) currentLocale.value = s.currentLocale;
+    if (s.enrolledEmployeeSI != null) enrolledEmployeeSI.value = s.enrolledEmployeeSI;
+    if (s.nhiMode != null) nhiMode.value = s.nhiMode;
+    if (s.nhiManualAmount !== undefined) nhiManualAmount.value = s.nhiManualAmount;
+    if (s.nhiKintowari !== undefined) nhiKintowari.value = s.nhiKintowari;
+    if (s.nhiShotokuwariRate !== undefined) nhiShotokuwariRate.value = s.nhiShotokuwariRate;
+    if (s.incomeEntries != null) incomeEntries.value = s.incomeEntries;
+    if (s.previousYearIncomeInput !== undefined) previousYearIncomeInput.value = s.previousYearIncomeInput;
+    if (s.employmentPrefecture != null) employmentPrefecture.value = s.employmentPrefecture;
+    if (s.residencePrefecture != null) residencePrefecture.value = s.residencePrefecture;
+    if (s.residenceCity != null) residenceCity.value = s.residenceCity;
+    if (s.selectedKenpo != null) selectedKenpo.value = s.selectedKenpo;
+    if (s.ageGroup != null) ageGroup.value = s.ageGroup;
+    if (s.showAdvancedOptions != null) showAdvancedOptions.value = s.showAdvancedOptions;
+    if (s.customHealthRate !== undefined) customHealthRate.value = s.customHealthRate;
+    if (s.customKaigoRate !== undefined) customKaigoRate.value = s.customKaigoRate;
+    if (s.customPensionRate !== undefined) customPensionRate.value = s.customPensionRate;
+    if (s.customEmploymentInsRate !== undefined) customEmploymentInsRate.value = s.customEmploymentInsRate;
+    if (s.selectedIndustry != null) selectedIndustry.value = s.selectedIndustry;
+    if (s.deductionEntries != null) deductionEntries.value = s.deductionEntries;
+  } catch {}
+};
+
+const resetState = () => {
+  currentLocale.value = 'ja';
+  enrolledEmployeeSI.value = true;
+  nhiMode.value = 'manual';
+  nhiManualAmount.value = null;
+  nhiKintowari.value = null;
+  nhiShotokuwariRate.value = null;
+  incomeEntries.value = [
+    { id: 'salary-default', type: 'salary', name: '', monthlySalary: 300000, annualBonus: 0, revenue: null, expenses: null, joinsSocialInsurance: true },
+  ];
+  previousYearIncomeInput.value = null;
+  employmentPrefecture.value = 'tokyo';
+  residencePrefecture.value = 'tokyo';
+  residenceCity.value = 'standard';
+  selectedKenpo.value = 'kyokai';
+  ageGroup.value = 'under40';
+  showAdvancedOptions.value = false;
+  customHealthRate.value = 4.99;
+  customKaigoRate.value = 0;
+  customPensionRate.value = 9.15;
+  customEmploymentInsRate.value = 0.6;
+  selectedIndustry.value = 'general';
+  deductionEntries.value = [];
+  try { localStorage.removeItem(STORAGE_KEY); } catch {}
+};
+
+loadState();
+
+watch(
+  [
+    currentLocale, enrolledEmployeeSI, nhiMode, nhiManualAmount, nhiKintowari, nhiShotokuwariRate,
+    incomeEntries, previousYearIncomeInput,
+    employmentPrefecture, residencePrefecture, residenceCity,
+    selectedKenpo, ageGroup, showAdvancedOptions,
+    customHealthRate, customKaigoRate, customPensionRate, customEmploymentInsRate,
+    selectedIndustry, deductionEntries,
+  ],
+  saveState,
+  { deep: true },
+);
+
 watch(employmentPrefecture, (newPref) => {
   if (selectedKenpo.value === 'kyokai') {
     customHealthRate.value = KYOKAI_KENPO_RATES[newPref] || 4.99;
@@ -92,8 +266,6 @@ watch(ageGroup, () => {
   updateKaigoRate();
 });
 
-// --- Deductions ---
-const deductionEntries = ref<DeductionEntry[]>([]);
 const showDeductionPicker = ref(false);
 const showHomeLoanWizard = ref(false);
 const editingHomeLoanId = ref<string | null>(null);
@@ -109,7 +281,13 @@ const availableDeductionTypes = computed(() => {
 });
 
 const totalAdditionalDeductions = computed(() => {
-  const gross = (Number(monthlySalaryInput.value) || 0) * 12 + (Number(annualBonusInput.value) || 0);
+  const salaryGross = incomeEntries.value
+    .filter(e => e.type === 'salary')
+    .reduce((sum, e) => sum + (Number(e.monthlySalary) || 0) * 12 + (Number(e.annualBonus) || 0), 0);
+  const bizIncome = incomeEntries.value
+    .filter(e => e.type === 'business')
+    .reduce((sum, e) => sum + Math.max(0, (Number(e.revenue) || 0) - (Number(e.expenses) || 0)), 0);
+  const gross = salaryGross + bizIncome;
   return deductionEntries.value
     .filter(e => !DEDUCTION_DEFS[e.type].isTaxCredit)  // tax-credit types are NOT income deductions
     .reduce((sum, entry) => sum + calculateDeductionAmount(entry.type, entry.value, gross), 0);
@@ -173,8 +351,13 @@ const removeDeduction = (id: string) => {
 };
 
 const deductionAmountFor = (entry: DeductionEntry) => {
-  const gross = (Number(monthlySalaryInput.value) || 0) * 12 + (Number(annualBonusInput.value) || 0);
-  return calculateDeductionAmount(entry.type, entry.value, gross);
+  const salaryGross = incomeEntries.value
+    .filter(e => e.type === 'salary')
+    .reduce((sum, e) => sum + (Number(e.monthlySalary) || 0) * 12 + (Number(e.annualBonus) || 0), 0);
+  const bizIncome = incomeEntries.value
+    .filter(e => e.type === 'business')
+    .reduce((sum, e) => sum + Math.max(0, (Number(e.revenue) || 0) - (Number(e.expenses) || 0)), 0);
+  return calculateDeductionAmount(entry.type, entry.value, salaryGross + bizIncome);
 };
 
 const totalCashCost = computed(() =>
@@ -185,32 +368,100 @@ const cashCostEntries = computed(() =>
   deductionEntries.value.filter(e => getCashCost(e) > 0)
 );
 
+// Compute NHI amount (only relevant when not in employee SI)
+const nhiAmount = computed(() => {
+  if (enrolledEmployeeSI.value) return 0;
+  if (nhiMode.value === 'manual') {
+    return Math.max(0, Number(nhiManualAmount.value) || 0);
+  }
+  // Auto mode: 所得割 + 均等割
+  // NHI base = max(0, total income - 基礎控除 430,000)
+  const salaryGross = incomeEntries.value
+    .filter(e => e.type === 'salary')
+    .reduce((sum, e) => sum + (Number(e.monthlySalary) || 0) * 12 + (Number(e.annualBonus) || 0), 0);
+  // Compute employment income deduction for NHI base
+  let empDeduction = 0;
+  if (salaryGross <= 1625000) empDeduction = Math.min(salaryGross, 550000);
+  else if (salaryGross <= 1800000) empDeduction = salaryGross * 0.4 - 100000;
+  else if (salaryGross <= 3600000) empDeduction = salaryGross * 0.3 + 80000;
+  else if (salaryGross <= 6600000) empDeduction = salaryGross * 0.2 + 440000;
+  else if (salaryGross <= 8500000) empDeduction = salaryGross * 0.1 + 1100000;
+  else empDeduction = 1950000;
+  const empIncome = Math.max(0, salaryGross - empDeduction);
+  const bizIncome = incomeEntries.value
+    .filter(e => e.type === 'business')
+    .reduce((sum, e) => sum + Math.max(0, (Number(e.revenue) || 0) - (Number(e.expenses) || 0)), 0);
+  const totalIncome = empIncome + bizIncome;
+  const nhiBase = Math.max(0, totalIncome - 430000);
+  const shotokuwari = Math.floor(nhiBase * (Number(nhiShotokuwariRate.value) || 0) / 100);
+  const kintowari = Number(nhiKintowari.value) || 0;
+  return shotokuwari + kintowari;
+});
+
 const results = computed(() => {
   const salary = Number(monthlySalaryInput.value) || 0;
   const bonus = Number(annualBonusInput.value) || 0;
+
   const prevIncomeRaw = previousYearIncomeInput.value;
-  const prevIncome = prevIncomeRaw === null ? null : Number(prevIncomeRaw);
+  const prevIncome = (prevIncomeRaw == null || prevIncomeRaw === '') ? null : Number(prevIncomeRaw);
   const hRate = customHealthRate.value !== null ? Number(customHealthRate.value) / 100 : 0.0499;
   const kRate = customKaigoRate.value !== null ? Number(customKaigoRate.value) / 100 : 0;
   const pRate = customPensionRate.value !== null ? Number(customPensionRate.value) / 100 : 0.0915;
   const eRate = customEmploymentInsRate.value !== null ? Number(customEmploymentInsRate.value) / 100 : 0.006;
 
+  // Non-primary salary entries
+  const nonPrimaryEntries = incomeEntries.value.filter(e => e.type === 'salary' && e !== primarySalaryEntry.value);
+  const additionalSalaryGross = nonPrimaryEntries
+    .reduce((sum, e) => sum + (Number(e.monthlySalary) || 0) * 12 + (Number(e.annualBonus) || 0), 0);
+
+  // Social insurance from non-primary workplaces that have SI joined
+  let additionalHealthInsurance = 0;
+  let additionalKaigoInsurance = 0;
+  let additionalPension = 0;
+  for (const entry of nonPrimaryEntries) {
+    if (!entry.joinsSocialInsurance) continue;
+    const ms = Number(entry.monthlySalary) || 0;
+    const ab = Number(entry.annualBonus) || 0;
+    const hObj = getStandardRemunerationGrade(ms, 1390000);
+    const pObj = getStandardRemunerationGrade(ms, 650000);
+    const bonusStdH = Math.min(Math.floor(ab / 1000) * 1000, 5730000);
+    const bonusStdP = Math.min(Math.floor(ab / 1000) * 1000, 1500000);
+    additionalHealthInsurance += Math.floor(hObj.value * hRate) * 12 + Math.floor(bonusStdH * hRate);
+    additionalKaigoInsurance += Math.floor(hObj.value * kRate) * 12 + Math.floor(bonusStdH * kRate);
+    additionalPension += Math.floor(pObj.value * pRate) * 12 + Math.floor(bonusStdP * pRate);
+  }
+
+  // Total net business income
+  const totalBusinessIncome = incomeEntries.value
+    .filter(e => e.type === 'business')
+    .reduce((sum, e) => sum + Math.max(0, (Number(e.revenue) || 0) - (Number(e.expenses) || 0)), 0);
+
   const prefData = RESIDENT_TAX_RATES[residencePrefecture.value];
   let localTaxRates = prefData ? prefData.default : { prefIncomeRate: 0.04, cityIncomeRate: 0.06, prefPerCapita: 1500, cityPerCapita: 3500 };
-  
-  if (prefData && residenceCity.value !== "Standard / Other (その他市区町村)") {
+
+  if (prefData && residenceCity.value !== "standard") {
     const cityOverrides = prefData.cities[residenceCity.value];
     if (cityOverrides) {
       localTaxRates = cityOverrides;
     }
   }
 
+  const globalSI = enrolledEmployeeSI.value;
+
   return calculateTaxesAndInsurance(salary, bonus, {
     previousYearGross: prevIncome,
-    healthInsuranceRate: hRate,
-    kaigoInsuranceRate: kRate,
-    pensionRate: pRate,
+    healthInsuranceRate: globalSI ? hRate : 0,
+    kaigoInsuranceRate: globalSI ? kRate : 0,
+    pensionRate: globalSI ? pRate : 0,
+    nationalPensionAmount: globalSI ? 0 : 17920 * 12,
+    nationalHealthInsuranceAmount: globalSI ? 0 : nhiAmount.value,
     employmentInsuranceRate: eRate,
+    primaryJoinsSocialInsurance: primarySalaryEntry.value?.joinsSocialInsurance !== false,
+    additionalSalaryGross,
+    additionalHealthInsurance: globalSI ? additionalHealthInsurance : 0,
+    additionalKaigoInsurance: globalSI ? additionalKaigoInsurance : 0,
+    additionalPension: globalSI ? additionalPension : 0,
+    businessIncome: totalBusinessIncome,
     prefIncomeRate: localTaxRates.prefIncomeRate,
     cityIncomeRate: localTaxRates.cityIncomeRate,
     prefPerCapita: localTaxRates.prefPerCapita,
@@ -220,6 +471,62 @@ const results = computed(() => {
     homeLoanCredit: homeLoanCreditAmount.value,
   });
 });
+
+interface SiBreakdownEntry {
+  entryId: string;
+  label: string;
+  healthBracket: number;
+  pensionBracket: number;
+  healthStandardRemuneration: number;
+  pensionStandardRemuneration: number;
+  annualHealth: number;
+  annualKaigo: number;
+  annualPension: number;
+}
+
+const siBreakdown = computed((): SiBreakdownEntry[] => {
+  const globalSI = enrolledEmployeeSI.value;
+  if (!globalSI) return [];
+  const hRate = globalSI ? (customHealthRate.value !== null ? Number(customHealthRate.value) / 100 : 0.0499) : 0;
+  const kRate = globalSI ? (customKaigoRate.value !== null ? Number(customKaigoRate.value) / 100 : 0) : 0;
+  const pRate = globalSI ? (customPensionRate.value !== null ? Number(customPensionRate.value) / 100 : 0.0915) : 0;
+  const locale = currentLocale.value;
+  const entries: SiBreakdownEntry[] = [];
+  let salaryIndex = 0;
+
+  for (const entry of incomeEntries.value) {
+    if (entry.type !== 'salary' || !entry.joinsSocialInsurance) continue;
+    salaryIndex++;
+    const ms = Number(entry.monthlySalary) || 0;
+    const ab = Number(entry.annualBonus) || 0;
+    const hObj = getStandardRemunerationGrade(ms, 1390000);
+    const pObj = getStandardRemunerationGrade(ms, 650000);
+    const pBracket = pObj.grade > 0 ? Math.max(1, pObj.grade - 3) : 0;
+    const bonusStdH = Math.min(Math.floor(ab / 1000) * 1000, 5730000);
+    const bonusStdP = Math.min(Math.floor(ab / 1000) * 1000, 1500000);
+    const annualHealth = Math.floor(hObj.value * hRate) * 12 + Math.floor(bonusStdH * hRate);
+    const annualKaigo = Math.floor(hObj.value * kRate) * 12 + Math.floor(bonusStdH * kRate);
+    const annualPension = Math.floor(pObj.value * pRate) * 12 + Math.floor(bonusStdP * pRate);
+    const defaultLabel = entry === primarySalaryEntry.value
+      ? (locale === 'ja' ? '主' : 'Primary')
+      : (locale === 'ja' ? `副${salaryIndex}` : `Job ${salaryIndex}`);
+    const label = entry.name || defaultLabel;
+    entries.push({
+      entryId: entry.id,
+      label,
+      healthBracket: hObj.grade,
+      pensionBracket: pBracket,
+      healthStandardRemuneration: hObj.value,
+      pensionStandardRemuneration: pObj.value,
+      annualHealth,
+      annualKaigo,
+      annualPension,
+    });
+  }
+  return entries;
+});
+
+const hasMultipleSiEntries = computed(() => siBreakdown.value.length > 1);
 
 // Format JPY correctly
 const formatCurrency = (value: number) => {
@@ -242,9 +549,19 @@ const pieSlices = computed((): PieSlice[] => {
       color: '#6fcfad',
     },
     {
+      label: locale === 'ja' ? '国民健康保険' : 'National Health Insurance',
+      value: r.nationalHealthInsurance,
+      color: '#6fcfad',
+    },
+    {
       label: locale === 'ja' ? '厚生年金' : 'Pension',
       value: r.pension,
       color: '#3b82f6',
+    },
+    {
+      label: locale === 'ja' ? '国民年金' : 'National Pension',
+      value: r.nationalPension,
+      color: '#60a5fa',
     },
     {
       label: locale === 'ja' ? '雇用保険' : 'Employment Insurance',
@@ -283,52 +600,26 @@ const pieSlices = computed((): PieSlice[] => {
 <template>
   <div class="app-container">
     
-    <button class="lang-toggle" @click="currentLocale = (currentLocale === 'en' ? 'ja' : 'en')">
+    <button class="top-btn top-right-btn" @click="currentLocale = (currentLocale === 'en' ? 'ja' : 'en')">
       {{ currentLocale === 'en' ? '日本語' : 'English' }}
     </button>
 
     <!-- Input Panel -->
     <div class="panel input-panel">
-      <header class="header">
-        <h1>{{ t.title }}</h1>
-        <p>{{ t.subtitle }}</p>
-      </header>
-
       <div class="input-section location-section" style="margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid #eaeaea;">
-        <h2>{{ t.locationSettings }}</h2>
-        
-        <div class="input-group">
-          <label for="employmentPrefecture">{{ t.empPrefecture }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.empPrefectureSub }}</small></label>
-          <div class="input-wrapper">
-            <select id="employmentPrefecture" v-model="employmentPrefecture" class="styled-select">
-              <option v-for="pref in PREFECTURES_LIST" :key="'emp-'+pref" :value="pref">{{ pref }}</option>
-            </select>
-          </div>
+        <div class="section-header">
+          <h2>{{ t.locationSettings }}</h2>
+          <button class="top-btn reset-btn" @click="resetState">{{ currentLocale === 'ja' ? 'リセット' : 'Reset' }}</button>
         </div>
 
-        <div class="input-group">
-          <label for="residencePrefecture">{{ t.resPrefecture }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.resPrefectureSub }}</small></label>
-          <div class="input-wrapper">
-            <select id="residencePrefecture" v-model="residencePrefecture" @change="handleResidencePrefectureChange" class="styled-select">
-              <option v-for="pref in PREFECTURES_LIST" :key="'res-'+pref" :value="pref">{{ pref }}</option>
-            </select>
-          </div>
-        </div>
+        <label class="si-toggle" style="margin-bottom: 1rem;">
+          <span class="switch">
+            <input type="checkbox" v-model="enrolledEmployeeSI" />
+            <span class="switch-slider"></span>
+          </span>
+          <span>{{ t.enrolledEmployeeSI }}</span>
+        </label>
 
-        <div class="input-group" v-if="availableCities.length > 0">
-          <label for="residenceCity">{{ t.municipality }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.municipalitySub }}</small></label>
-          <div class="input-wrapper">
-            <select id="residenceCity" v-model="residenceCity" class="styled-select">
-              <option value="Standard / Other (その他市区町村)">{{ t.standardCity }}</option>
-              <option v-for="city in availableCities" :key="city" :value="city">{{ city }}</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <div class="input-section">
-        <h2>{{ t.incomeDetails }}</h2>
-        
         <div class="input-group">
           <label for="ageGroup">{{ t.ageGroup }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.ageGroupSub }}</small></label>
           <div class="input-wrapper">
@@ -340,136 +631,214 @@ const pieSlices = computed((): PieSlice[] => {
           </div>
         </div>
 
-        <div class="input-group">
-          <label for="monthlySalary">{{ t.monthlySalary }}</label>
-          <div class="input-wrapper has-currency">
-            <span class="currency-symbol">¥</span>
-            <input 
-              id="monthlySalary"
-              type="number" 
-              v-model.number="monthlySalaryInput" 
-              min="0"
-              step="1000"
-              placeholder="e.g. 300000"
-            />
+        <div class="input-group" v-if="enrolledEmployeeSI">
+          <label for="employmentPrefecture">{{ t.empPrefecture }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.empPrefectureSub }}</small></label>
+          <div class="input-wrapper">
+            <select id="employmentPrefecture" v-model="employmentPrefecture" class="styled-select">
+              <option v-for="pref in PREFECTURES_LIST" :key="'emp-'+pref" :value="pref">{{ prefName(pref) }}</option>
+            </select>
           </div>
         </div>
 
         <div class="input-group">
-          <label for="annualBonus">{{ t.annualBonus }}</label>
-          <div class="input-wrapper has-currency">
-            <span class="currency-symbol">¥</span>
-            <input 
-              id="annualBonus"
-              type="number" 
-              v-model.number="annualBonusInput" 
-              min="0"
-              step="1000"
-              placeholder="e.g. 1000000"
-            />
+          <label for="residencePrefecture">{{ t.resPrefecture }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.resPrefectureSub }}</small></label>
+          <div class="input-wrapper">
+            <select id="residencePrefecture" v-model="residencePrefecture" @change="handleResidencePrefectureChange" class="styled-select">
+              <option v-for="pref in PREFECTURES_LIST" :key="'res-'+pref" :value="pref">{{ prefName(pref) }}</option>
+            </select>
           </div>
         </div>
 
-        <div class="input-group">
+        <div class="input-group" v-if="availableCities.length > 0">
+          <label for="residenceCity">{{ t.municipality }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.municipalitySub }}</small></label>
+          <div class="input-wrapper">
+            <select id="residenceCity" v-model="residenceCity" class="styled-select">
+              <option value="standard">{{ t.standardCity }}</option>
+              <option v-for="city in availableCities" :key="city" :value="city">{{ cityName(city) }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div v-if="!enrolledEmployeeSI" class="nhi-section">
+          <h3 style="margin: 1rem 0 0.5rem; font-size: 0.95rem; font-weight: 600;">{{ t.nationalHealthInsurance }}</h3>
+          <div class="nhi-mode-toggle">
+            <button :class="['nhi-mode-btn', { active: nhiMode === 'manual' }]" @click="nhiMode = 'manual'">{{ t.nhiModeManual }}</button>
+            <button :class="['nhi-mode-btn', { active: nhiMode === 'auto' }]" @click="nhiMode = 'auto'">{{ t.nhiModeAuto }}</button>
+          </div>
+
+          <template v-if="nhiMode === 'manual'">
+            <label class="deduction-input-label" style="margin-top: 0.5rem;">{{ t.nhiTotalAmount }}</label>
+            <div class="input-wrapper has-currency">
+              <span class="currency-symbol">¥</span>
+              <input type="number" v-model.number="nhiManualAmount" min="0" step="1000" class="deduction-input" />
+            </div>
+          </template>
+
+          <template v-else>
+            <label class="deduction-input-label" style="margin-top: 0.5rem;">{{ t.nhiKintowari }}</label>
+            <div class="input-wrapper has-currency">
+              <span class="currency-symbol">¥</span>
+              <input type="number" v-model.number="nhiKintowari" min="0" step="100" class="deduction-input" />
+            </div>
+            <label class="deduction-input-label" style="margin-top: 0.5rem;">{{ t.nhiShotokuwari }}</label>
+            <div class="input-wrapper has-percentage">
+              <input type="number" v-model.number="nhiShotokuwariRate" min="0" step="0.01" class="deduction-input" />
+              <span class="percentage-symbol">%</span>
+            </div>
+          </template>
+        </div>
+
+        <template v-if="enrolledEmployeeSI">
+          <div class="advanced-options-toggle" @click="showAdvancedOptions = !showAdvancedOptions">
+            <span>{{ showAdvancedOptions ? '▼ ' + t.hideSettings : '▶ ' + t.showSettings }}</span>
+          </div>
+
+          <div v-show="showAdvancedOptions" class="advanced-options-panel">
+
+            <div class="input-group">
+              <label for="kenpoSelect">{{ t.unionSelect }}</label>
+              <div class="input-wrapper">
+                <select id="kenpoSelect" v-model="selectedKenpo" @change="handleKenpoChange" class="styled-select">
+                  <option value="kyokai">{{ t.unionKyokai }}</option>
+                  <option value="its">{{ t.unionIts }}</option>
+                  <option value="tjk">{{ t.unionTjk }}</option>
+                  <option value="other">{{ t.unionOther }}</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label for="customHealthRate">{{ t.customHealth }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.customHealthSub }}</small></label>
+              <div class="input-wrapper has-percentage">
+                <input id="customHealthRate" type="number" v-model.number="customHealthRate" min="0" step="0.01" />
+                <span class="percentage-symbol">%</span>
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label for="customKaigoRate">{{ t.customKaigo }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.customKaigoSub }}</small></label>
+              <div class="input-wrapper has-percentage">
+                <input id="customKaigoRate" type="number" v-model.number="customKaigoRate" min="0" step="0.01" />
+                <span class="percentage-symbol">%</span>
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label for="customPensionRate">{{ t.customPension }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.customPensionSub }}</small></label>
+              <div class="input-wrapper has-percentage">
+                <input id="customPensionRate" type="number" v-model.number="customPensionRate" min="0" step="0.01" />
+                <span class="percentage-symbol">%</span>
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label for="industrySelect">{{ t.employmentInsIndustry }}</label>
+              <div class="input-wrapper">
+                <select id="industrySelect" v-model="selectedIndustry" @change="handleIndustryChange" class="styled-select">
+                  <option value="general">{{ t.industryGeneral }}</option>
+                  <option value="agriForestry">{{ t.industryAgriForestry }}</option>
+                  <option value="construction">{{ t.industryConstruction }}</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label for="customEmploymentInsRate">{{ t.customEmploymentIns }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.customEmploymentInsSub }}</small></label>
+              <div class="input-wrapper has-percentage">
+                <input id="customEmploymentInsRate" type="number" v-model.number="customEmploymentInsRate" min="0" step="0.01" />
+                <span class="percentage-symbol">%</span>
+              </div>
+            </div>
+
+          </div>
+        </template>
+      </div>
+
+      <div class="input-section">
+        <h2>{{ t.incomeDetails }}</h2>
+
+        <div class="deduction-cards">
+          <div class="deduction-card" v-for="entry in incomeEntries" :key="entry.id">
+            <div class="deduction-card-header">
+              <span class="deduction-card-name">
+                {{ entry.type === 'salary' ? t.salaryIncomeName : t.businessIncomeName }}
+                <small v-if="entry.type === 'salary' && entry === primarySalaryEntry" class="bracket-info" style="margin-left: 0.4rem;">{{ t.primaryJob }}</small>
+                <input style="margin-left: 0.4rem;"
+                  type="text"
+                  v-model="entry.name"
+                  class="income-name-input"
+                  :placeholder="currentLocale === 'ja' ? '名称（任意）' : 'Name (optional)'"
+                />
+              </span>
+              <div class="deduction-card-actions">
+                <button class="remove-btn" @click="removeIncomeEntry(entry.id)" :title="t.removeIncome">✕</button>
+              </div>
+            </div>
+            <div class="deduction-card-body">
+              <!-- Salary inputs -->
+              <template v-if="entry.type === 'salary'">
+                <label class="deduction-input-label">{{ t.monthlySalary }}</label>
+                <div class="input-wrapper has-currency">
+                  <span class="currency-symbol">¥</span>
+                  <input type="number" v-model.number="entry.monthlySalary" min="0" step="1000" class="deduction-input" />
+                </div>
+                <label class="deduction-input-label" style="margin-top: 0.5rem;">{{ t.annualBonus }}</label>
+                <div class="input-wrapper has-currency">
+                  <span class="currency-symbol">¥</span>
+                  <input type="number" v-model.number="entry.annualBonus" min="0" step="1000" class="deduction-input" />
+                </div>
+                <label class="si-toggle" style="margin-top: 0.6rem;">
+                  <span class="switch">
+                    <input type="checkbox" v-model="entry.joinsSocialInsurance" />
+                    <span class="switch-slider"></span>
+                  </span>
+                  <span>{{ t.joinsSocialInsurance }}</span>
+                </label>
+              </template>
+              <!-- Business inputs -->
+              <template v-else>
+                <label class="deduction-input-label">{{ t.businessRevenue }}</label>
+                <div class="input-wrapper has-currency">
+                  <span class="currency-symbol">¥</span>
+                  <input type="number" v-model.number="entry.revenue" min="0" step="1000" class="deduction-input" />
+                </div>
+                <label class="deduction-input-label" style="margin-top: 0.5rem;">{{ t.businessExpenses }}</label>
+                <div class="input-wrapper has-currency">
+                  <span class="currency-symbol">¥</span>
+                  <input type="number" v-model.number="entry.expenses" min="0" step="1000" class="deduction-input" />
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <div class="deduction-add-wrapper" style="margin-top: 0.75rem;">
+          <button class="add-deduction-btn" @click="showIncomePicker = !showIncomePicker">{{ t.addIncome }}</button>
+          <div v-if="showIncomePicker" class="deduction-picker">
+            <button class="picker-item" @click="addIncomeEntry('salary')">
+              <span class="picker-name">{{ t.salaryIncomeName }}</span>
+              <small class="picker-desc">{{ t.salaryIncomeDesc }}</small>
+            </button>
+            <button class="picker-item" @click="addIncomeEntry('business')">
+              <span class="picker-name">{{ t.businessIncomeName }}</span>
+              <small class="picker-desc">{{ t.businessIncomeDesc }}</small>
+            </button>
+          </div>
+        </div>
+
+        <div class="input-group" style="margin-top: 1rem;">
           <label for="previousYearIncome">{{ t.prevIncome }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.prevIncomeSub }}</small></label>
           <div class="input-wrapper has-currency">
             <span class="currency-symbol">¥</span>
-            <input 
+            <input
               id="previousYearIncome"
-              type="number" 
-              v-model.number="previousYearIncomeInput" 
+              type="number"
+              v-model.number="previousYearIncomeInput"
               min="0"
               step="1000"
               :placeholder="t.prevIncomePlaceholder"
             />
           </div>
-        </div>
-
-        <div class="advanced-options-toggle" @click="showAdvancedOptions = !showAdvancedOptions">
-          <span>{{ showAdvancedOptions ? '▼ ' + t.hideSettings : '▶ ' + t.showSettings }}</span>
-        </div>
-
-        <div v-show="showAdvancedOptions" class="advanced-options-panel">
-          
-          <div class="input-group">
-            <label for="kenpoSelect">{{ t.unionSelect }}</label>
-            <div class="input-wrapper">
-              <select id="kenpoSelect" v-model="selectedKenpo" @change="handleKenpoChange" class="styled-select">
-                <option value="kyokai">{{ t.unionKyokai }}</option>
-                <option value="its">{{ t.unionIts }}</option>
-                <option value="tjk">{{ t.unionTjk }}</option>
-                <option value="other">{{ t.unionOther }}</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="input-group">
-            <label for="customHealthRate">{{ t.customHealth }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.customHealthSub }}</small></label>
-            <div class="input-wrapper has-percentage">
-              <input 
-                id="customHealthRate"
-                type="number" 
-                v-model.number="customHealthRate" 
-                min="0"
-                step="0.01"
-              />
-              <span class="percentage-symbol">%</span>
-            </div>
-          </div>
-
-          <div class="input-group">
-            <label for="customKaigoRate">{{ t.customKaigo }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.customKaigoSub }}</small></label>
-            <div class="input-wrapper has-percentage">
-              <input 
-                id="customKaigoRate"
-                type="number" 
-                v-model.number="customKaigoRate" 
-                min="0"
-                step="0.01"
-              />
-              <span class="percentage-symbol">%</span>
-            </div>
-          </div>
-
-          <div class="input-group">
-            <label for="customPensionRate">{{ t.customPension }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.customPensionSub }}</small></label>
-            <div class="input-wrapper has-percentage">
-              <input
-                id="customPensionRate"
-                type="number"
-                v-model.number="customPensionRate"
-                min="0"
-                step="0.01"
-              />
-              <span class="percentage-symbol">%</span>
-            </div>
-          </div>
-
-          <div class="input-group">
-            <label for="industrySelect">{{ t.employmentInsIndustry }}</label>
-            <div class="input-wrapper">
-              <select id="industrySelect" v-model="selectedIndustry" @change="handleIndustryChange" class="styled-select">
-                <option value="general">{{ t.industryGeneral }}</option>
-                <option value="agriForestry">{{ t.industryAgriForestry }}</option>
-                <option value="construction">{{ t.industryConstruction }}</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="input-group">
-            <label for="customEmploymentInsRate">{{ t.customEmploymentIns }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.customEmploymentInsSub }}</small></label>
-            <div class="input-wrapper has-percentage">
-              <input
-                id="customEmploymentInsRate"
-                type="number"
-                v-model.number="customEmploymentInsRate"
-                min="0"
-                step="0.01"
-              />
-              <span class="percentage-symbol">%</span>
-            </div>
-          </div>
-
         </div>
       </div>
 
@@ -597,25 +966,59 @@ const pieSlices = computed((): PieSlice[] => {
           <span>= {{ t.employmentIncome }}</span>
           <span>{{ formatCurrency(results.employmentIncome) }}</span>
         </div>
+        <div class="result-row sub-item" v-if="results.businessIncome > 0">
+          <span>+ {{ t.businessIncomeName }}</span>
+          <span>{{ formatCurrency(results.businessIncome) }}</span>
+        </div>
 
         <div class="divider"></div>
 
-        <div class="result-row deduction social-insurance-row">
-          <span>{{ t.healthIns }} <small class="bracket-info">{{ t.gradeString }} {{ results.healthBracket }} ({{ formatCurrency(results.healthStandardRemuneration) }})</small></span>
-          <span class="social-ins-value">- {{ formatCurrency(results.healthInsurance) }}</span>
+        <!-- Single SI workplace -->
+        <template v-if="!hasMultipleSiEntries">
+          <div class="result-row deduction social-insurance-row" v-if="results.healthInsurance > 0">
+            <span>{{ t.healthIns }} <small class="bracket-info">{{ t.gradeString }} {{ results.healthBracket }} ({{ formatCurrency(results.healthStandardRemuneration) }})</small></span>
+            <span class="social-ins-value">- {{ formatCurrency(results.healthInsurance) }}</span>
+          </div>
+          <div class="result-row deduction social-insurance-row" v-if="results.kaigoInsurance > 0">
+            <span>{{ t.nursingCare }}</span>
+            <span class="social-ins-value">- {{ formatCurrency(results.kaigoInsurance) }}</span>
+          </div>
+          <div class="result-row deduction social-insurance-row" v-if="results.pension > 0">
+            <span>{{ t.pension }} <small class="bracket-info">{{ t.gradeString }} {{ results.pensionBracket }} ({{ formatCurrency(results.pensionStandardRemuneration) }})</small></span>
+            <span class="social-ins-value">- {{ formatCurrency(results.pension) }}</span>
+          </div>
+        </template>
+
+        <!-- Multiple SI workplaces -->
+        <template v-else>
+          <template v-for="si in siBreakdown" :key="si.entryId + '-health'">
+            <div class="result-row deduction social-insurance-row" v-if="si.annualHealth > 0">
+              <span>{{ t.healthIns }} <small class="bracket-info">{{ si.label }} — {{ t.gradeString }} {{ si.healthBracket }} ({{ formatCurrency(si.healthStandardRemuneration) }})</small></span>
+              <span class="social-ins-value">- {{ formatCurrency(si.annualHealth) }}</span>
+            </div>
+            <div class="result-row deduction social-insurance-row" v-if="si.annualKaigo > 0">
+              <span>{{ t.nursingCare }} <small class="bracket-info">{{ si.label }}</small></span>
+              <span class="social-ins-value">- {{ formatCurrency(si.annualKaigo) }}</span>
+            </div>
+            <div class="result-row deduction social-insurance-row" v-if="si.annualPension > 0">
+              <span>{{ t.pension }} <small class="bracket-info">{{ si.label }} — {{ t.gradeString }} {{ si.pensionBracket }} ({{ formatCurrency(si.pensionStandardRemuneration) }})</small></span>
+              <span class="social-ins-value">- {{ formatCurrency(si.annualPension) }}</span>
+            </div>
+          </template>
+        </template>
+
+        <!-- National Pension (when not in 厚生年金) -->
+        <div class="result-row deduction social-insurance-row" v-if="results.nationalPension > 0">
+          <span>{{ t.nationalPension }}</span>
+          <span class="social-ins-value">- {{ formatCurrency(results.nationalPension) }}</span>
         </div>
 
-        <div class="result-row deduction social-insurance-row" v-if="results.kaigoInsurance > 0">
-          <span>{{ t.nursingCare }}</span>
-          <span class="social-ins-value">- {{ formatCurrency(results.kaigoInsurance) }}</span>
-        </div>
-        
-        <div class="result-row deduction social-insurance-row">
-          <span>{{ t.pension }} <small class="bracket-info">{{ t.gradeString }} {{ results.pensionBracket }} ({{ formatCurrency(results.pensionStandardRemuneration) }})</small></span>
-          <span class="social-ins-value">- {{ formatCurrency(results.pension) }}</span>
+        <div class="result-row deduction social-insurance-row" v-if="results.nationalHealthInsurance > 0">
+          <span>{{ t.nationalHealthInsurance }}</span>
+          <span class="social-ins-value">- {{ formatCurrency(results.nationalHealthInsurance) }}</span>
         </div>
 
-        <div class="result-row deduction social-insurance-row">
+        <div class="result-row deduction social-insurance-row" v-if="results.employmentInsurance > 0">
           <span>{{ t.employmentIns }}</span>
           <span class="social-ins-value">- {{ formatCurrency(results.employmentInsurance) }}</span>
         </div>
@@ -759,10 +1162,9 @@ const pieSlices = computed((): PieSlice[] => {
 
 <style scoped>
 /* Language toggle */
-.lang-toggle {
+.top-btn {
   position: fixed;
   top: 1.25rem;
-  right: 1.5rem;
   z-index: 1000;
   padding: 0.4rem 0.9rem;
   font-size: 0.8rem;
@@ -777,7 +1179,34 @@ const pieSlices = computed((): PieSlice[] => {
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 
-.lang-toggle:hover {
+.top-right-btn {
+  right: 1.5rem;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.section-header h2 {
+  margin-bottom: 0;
+}
+
+.reset-btn {
+  position: static;
+  color: #d32f2f;
+  border-color: #d32f2f;
+}
+
+.top-btn.reset-btn:hover {
+  color: #fff;
+  background: #d32f2f;
+  border-color: #d32f2f;
+}
+
+.top-btn:hover {
   color: #111;
   border-color: #111;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -785,7 +1214,7 @@ const pieSlices = computed((): PieSlice[] => {
 
 /* Minimalist, clean styling */
 .app-container {
-  min-height: 100vh;
+  height: 100vh;
   width: 100%;
   display: flex;
   justify-content: flex-start;
@@ -795,6 +1224,7 @@ const pieSlices = computed((): PieSlice[] => {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: #111;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .panel {
@@ -854,26 +1284,6 @@ const pieSlices = computed((): PieSlice[] => {
   margin-bottom: 2rem;
   text-align: center;
 }
-
-.header {
-  text-align: left;
-  margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid #eaeaea;
-}
-
-.header h1 {
-  font-size: 2rem;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  color: #111;
-}
-
-.header p {
-  font-size: 1rem;
-  color: #666;
-}
-
 
 
 .input-section h2, .results-card h2 {
@@ -1271,6 +1681,110 @@ input[type=number] {
   font-size: 0.8rem;
   color: #666;
   margin-bottom: 0.35rem;
+}
+
+.nhi-mode-toggle {
+  display: flex;
+  gap: 0;
+  margin-top: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.nhi-mode-btn {
+  flex: 1;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  border: none;
+  background: #fff;
+  color: #666;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.nhi-mode-btn:first-child {
+  border-right: 1px solid #ddd;
+}
+
+.nhi-mode-btn.active {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.income-name-input {
+  display: inline-block;
+  width: 7rem;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.82rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: #333;
+  background: transparent;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.income-name-input:hover {
+  border-color: #ddd;
+  background: #fafafa;
+}
+
+.income-name-input:focus {
+  outline: none;
+  border-color: #999;
+  background: #fff;
+}
+
+.si-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #555;
+  cursor: pointer;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 34px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch-slider {
+  position: absolute;
+  inset: 0;
+  background: #ccc;
+  border-radius: 18px;
+  transition: background 0.2s;
+}
+
+.switch-slider::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+
+.switch input:checked + .switch-slider {
+  background: #3b82f6;
+}
+
+.switch input:checked + .switch-slider::before {
+  transform: translateX(16px);
 }
 
 .deduction-input {
