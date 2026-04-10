@@ -15,6 +15,8 @@ export interface TaxCalculationResult {
   residentTaxMunicipal: number;
   furusatoIncomeTaxCredit: number;    // ふるさと納税 — income tax credit portion
   furusatoResidentTaxCredit: number;  // ふるさと納税 — resident tax credit portion
+  homeLoanIncomeTaxCredit: number;    // 住宅ローン控除 — income tax credit portion
+  homeLoanResidentTaxCredit: number;  // 住宅ローン控除 — resident tax credit portion
   totalDeductions: number;
   netPay: number;
   monthlyNet: number;
@@ -104,6 +106,7 @@ export interface TaxCalculationOptions {
   cityPerCapita?: number;
   additionalDeductions?: number; // sum of all 所得控除 entered by user (excludes furusato)
   furusatoNetDonation?: number;  // (donation - 2,000) — applied as direct tax credit, not income deduction
+  homeLoanCredit?: number;       // 住宅ローン控除額 — applied before reconstruction surtax
 }
 
 export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: number, options: TaxCalculationOptions = {}): TaxCalculationResult {
@@ -212,9 +215,21 @@ export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: n
   else if (taxableIncomeTax <= 39999000) { baseIncomeTax = taxableIncomeTax * 0.40 - 2796000;    marginalRate = 40; }
   else                                   { baseIncomeTax = taxableIncomeTax * 0.45 - 4796000;    marginalRate = 45; }
 
-  // With reconstruction tax (2.1%)
   const effectiveMarginalRate = parseFloat((marginalRate * 1.021).toFixed(3));
-  const incomeTax = Math.floor(Math.floor(baseIncomeTax) * 1.021 / 100) * 100;
+
+  // Home loan credit is applied BEFORE the reconstruction surtax (per NTA rules):
+  //   所得税額 → 住宅ローン控除 → 基準所得税額 → ×1.021 → 復興特別所得税
+  const rawHomeLoanCredit = options.homeLoanCredit ?? 0;
+  const homeLoanIncomeTaxCredit = Math.min(rawHomeLoanCredit, Math.floor(baseIncomeTax));
+  const afterHomeLoanBase = Math.max(0, Math.floor(baseIncomeTax) - homeLoanIncomeTaxCredit);
+
+  // Reconstruction tax (2.1%) applied to base after home loan credit
+  const incomeTax = Math.floor(afterHomeLoanBase * 1.021 / 100) * 100;
+
+  // Home loan resident tax spillover: remainder up to min(97500, taxableIncome × 5%)
+  const homeLoanRemainder = rawHomeLoanCredit - homeLoanIncomeTaxCredit;
+  const homeLoanResidentTaxLimit = Math.min(97500, Math.floor(taxableIncomeTax * 0.05));
+  let homeLoanResidentTaxCredit = Math.min(homeLoanRemainder, homeLoanResidentTaxLimit);
 
   // --- Resident Tax ---
   // Income-based levied amount
@@ -246,16 +261,21 @@ export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: n
   const roundedResidentTaxMunicipal = Math.floor(residentTaxMunicipal / 100) * 100;
   const roundedResidentTax = roundedResidentTaxPrefectural + roundedResidentTaxMunicipal;
 
+  // --- Home Loan Resident Tax Credit ---
+  // Cap the resident tax credit by the actual resident tax available
+  homeLoanResidentTaxCredit = Math.min(homeLoanResidentTaxCredit, roundedResidentTax);
+  const residentTaxAfterHomeLoan = roundedResidentTax - homeLoanResidentTaxCredit;
+
   // --- Furusato Nozei Tax Credits ---
   // The net donation (amount - 2000) is returned entirely via direct tax credits:
   //   income tax credit = netDonation × effectiveMarginalRate
   //   resident tax credit = remainder (via 住民税特例控除)
   const furusatoNet = options.furusatoNetDonation ?? 0;
   const furusatoIncomeTaxCredit = Math.min(incomeTax, Math.floor(furusatoNet * effectiveMarginalRate / 100));
-  const furusatoResidentTaxCredit = Math.min(roundedResidentTax, furusatoNet - furusatoIncomeTaxCredit);
+  const furusatoResidentTaxCredit = Math.min(residentTaxAfterHomeLoan, furusatoNet - furusatoIncomeTaxCredit);
 
   const adjustedIncomeTax = incomeTax - furusatoIncomeTaxCredit;
-  const adjustedResidentTax = roundedResidentTax - furusatoResidentTaxCredit;
+  const adjustedResidentTax = residentTaxAfterHomeLoan - furusatoResidentTaxCredit;
 
   const totalDeductions = totalSocialInsurance + adjustedIncomeTax + adjustedResidentTax;
   const netPay = annualGross - totalDeductions;
@@ -289,6 +309,8 @@ export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: n
     residentTaxMunicipal: roundedResidentTaxMunicipal,
     furusatoIncomeTaxCredit,
     furusatoResidentTaxCredit,
+    homeLoanIncomeTaxCredit,
+    homeLoanResidentTaxCredit,
     totalDeductions,
     netPay,
     monthlyNet,

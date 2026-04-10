@@ -1,5 +1,7 @@
 // Japan income deductions (所得控除) definitions and calculation logic
 
+import type { HomeLoanParams } from './homeLoan';
+
 export type DeductionType =
   | 'life_insurance'
   | 'earthquake_insurance'
@@ -9,12 +11,14 @@ export type DeductionType =
   | 'spouse'
   | 'dependent_general'
   | 'dependent_specified'
-  | 'dependent_aged';
+  | 'dependent_aged'
+  | 'home_loan';
 
 export interface DeductionEntry {
   id: string;
   type: DeductionType;
   value: number; // user-supplied amount or count
+  homeLoanParams?: HomeLoanParams; // only for home_loan type
 }
 
 export interface DeductionMeta {
@@ -29,6 +33,7 @@ export interface DeductionMeta {
   maxInput?: number;      // soft cap hint shown to user
   hasCashCost?: boolean;  // true if the contribution itself leaves the user's pocket (e.g. iDeCo)
   isTaxCredit?: boolean;  // true if this offsets taxes directly rather than reducing taxable income
+  hasWizard?: boolean;    // true if this type uses a wizard instead of a simple input field
 }
 
 export const DEDUCTION_DEFS: Record<DeductionType, DeductionMeta> = {
@@ -129,6 +134,18 @@ export const DEDUCTION_DEFS: Record<DeductionType, DeductionMeta> = {
     inputLabelJa: '人数',
     inputIsCount: true,
   },
+  home_loan: {
+    type: 'home_loan',
+    nameEn: 'Home Loan Deduction',
+    nameJa: '住宅借入金等特別控除',
+    descEn: 'Tax credit for housing loan (0.7% of year-end balance)',
+    descJa: '住宅ローン控除 (年末残高の0.7%を税額控除)',
+    inputLabelEn: 'Configured via wizard',
+    inputLabelJa: 'ウィザードで設定',
+    inputIsCount: false,
+    isTaxCredit: true,
+    hasWizard: true,
+  },
 };
 
 export const DEDUCTION_ORDER: DeductionType[] = [
@@ -137,6 +154,7 @@ export const DEDUCTION_ORDER: DeductionType[] = [
   'earthquake_insurance',
   'medical_expense',
   'furusato',
+  'home_loan',
   'spouse',
   'dependent_general',
   'dependent_specified',
@@ -202,6 +220,10 @@ export function calculateDeductionAmount(
 
     case 'dependent_aged':
       return Math.floor(value) * 480000;
+
+    case 'home_loan':
+      // Tax credit — handled separately via calculateHomeLoanCredit()
+      return 0;
 
     default:
       return 0;

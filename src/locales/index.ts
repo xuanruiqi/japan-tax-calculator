@@ -66,6 +66,32 @@ export interface LocaleStrings {
   removeDeduction: string;
   deductionAmount: string;
   totalAdditionalDeductions: string;
+  homeLoanCredit: string;
+  homeLoanIncomeTaxCredit: string;
+  homeLoanResidentTaxCredit: string;
+  homeLoanWizardTitle: string;
+  homeLoanStepMoveIn: string;
+  homeLoanStepHouseType: string;
+  homeLoanStepLoanDetails: string;
+  homeLoanStepConfirm: string;
+  homeLoanMoveInYear: string;
+  homeLoanHouseType: string;
+  homeLoanNewConstruction: string;
+  homeLoanExistingHousing: string;
+  homeLoanYearEndBalance: string;
+  homeLoanDeductionYear: string;
+  homeLoanDeductionYearSuffix: string;
+  homeLoanMaxBalance: string;
+  homeLoanMaxYears: string;
+  homeLoanCreditRate: string;
+  homeLoanEstimatedCredit: string;
+  homeLoanNotEligible: string;
+  homeLoanExceedsPeriod: string;
+  wizardNext: string;
+  wizardBack: string;
+  wizardConfirm: string;
+  wizardCancel: string;
+  wizardEdit: string;
 }
 
 export const translations: Record<'en' | 'ja', LocaleStrings> = {
@@ -152,6 +178,34 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     removeDeduction: 'Remove',
     deductionAmount: 'Deduction:',
     totalAdditionalDeductions: 'Total Additional Deductions',
+
+    // Home loan deduction
+    homeLoanCredit: 'Home Loan Deduction',
+    homeLoanIncomeTaxCredit: 'Income Tax Credit',
+    homeLoanResidentTaxCredit: 'Resident Tax Credit',
+    homeLoanWizardTitle: 'Home Loan Deduction Setup',
+    homeLoanStepMoveIn: 'Move-in Year',
+    homeLoanStepHouseType: 'House Type',
+    homeLoanStepLoanDetails: 'Loan Details',
+    homeLoanStepConfirm: 'Confirm',
+    homeLoanMoveInYear: 'Year you moved in',
+    homeLoanHouseType: 'Type of housing',
+    homeLoanNewConstruction: 'New Construction',
+    homeLoanExistingHousing: 'Existing Housing',
+    homeLoanYearEndBalance: 'Year-end Loan Balance (JPY)',
+    homeLoanDeductionYear: 'Year of deduction period',
+    homeLoanDeductionYearSuffix: '',
+    homeLoanMaxBalance: 'Max eligible balance',
+    homeLoanMaxYears: 'Deduction period',
+    homeLoanCreditRate: 'Credit rate',
+    homeLoanEstimatedCredit: 'Estimated annual credit',
+    homeLoanNotEligible: 'This house type is not eligible for the selected move-in year.',
+    homeLoanExceedsPeriod: 'Exceeds the deduction period.',
+    wizardNext: 'Next',
+    wizardBack: 'Back',
+    wizardConfirm: 'Confirm',
+    wizardCancel: 'Cancel',
+    wizardEdit: 'Edit',
   },
   ja: {
     title: '手取り計算ツール (日本)',
@@ -230,5 +284,33 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     removeDeduction: '削除',
     deductionAmount: '控除額:',
     totalAdditionalDeductions: '追加控除合計',
+
+    // Home loan deduction
+    homeLoanCredit: '住宅ローン控除',
+    homeLoanIncomeTaxCredit: '所得税控除分',
+    homeLoanResidentTaxCredit: '住民税控除分',
+    homeLoanWizardTitle: '住宅ローン控除の設定',
+    homeLoanStepMoveIn: '入居年',
+    homeLoanStepHouseType: '住宅の種類',
+    homeLoanStepLoanDetails: 'ローン情報',
+    homeLoanStepConfirm: '確認',
+    homeLoanMoveInYear: '入居した年',
+    homeLoanHouseType: '住宅の種類',
+    homeLoanNewConstruction: '新築住宅',
+    homeLoanExistingHousing: '既存住宅（中古）',
+    homeLoanYearEndBalance: '年末ローン残高 (円)',
+    homeLoanDeductionYear: '控除適用年目',
+    homeLoanDeductionYearSuffix: '年目',
+    homeLoanMaxBalance: '借入限度額',
+    homeLoanMaxYears: '控除期間',
+    homeLoanCreditRate: '控除率',
+    homeLoanEstimatedCredit: '控除見込額',
+    homeLoanNotEligible: 'この住宅の種類は選択された入居年では対象外です。',
+    homeLoanExceedsPeriod: '控除期間を超えています。',
+    wizardNext: '次へ',
+    wizardBack: '戻る',
+    wizardConfirm: '確定',
+    wizardCancel: 'キャンセル',
+    wizardEdit: '編集',
   }
 };

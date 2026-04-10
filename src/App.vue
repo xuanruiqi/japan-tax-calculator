@@ -7,9 +7,11 @@ import {
   type DeductionEntry, type DeductionType,
   DEDUCTION_DEFS, DEDUCTION_ORDER, calculateDeductionAmount, getCashCost
 } from './data/deductions';
+import { calculateHomeLoanCredit, type HomeLoanParams } from './data/homeLoan';
 import DonutChart, { type PieSlice } from './components/DonutChart.vue';
+import HomeLoanWizard from './components/HomeLoanWizard.vue';
 
-const currentLocale = ref<'en' | 'ja'>('en');
+const currentLocale = ref<'en' | 'ja'>('ja');
 const t = computed(() => translations[currentLocale.value]);
 
 const monthlySalaryInput = ref<number | null>(300000);
@@ -81,11 +83,13 @@ watch(ageGroup, () => {
 // --- Deductions ---
 const deductionEntries = ref<DeductionEntry[]>([]);
 const showDeductionPicker = ref(false);
+const showHomeLoanWizard = ref(false);
+const editingHomeLoanId = ref<string | null>(null);
 
 const availableDeductionTypes = computed(() => {
   const used = new Set(deductionEntries.value.map(d => d.type));
   // Dependents can be added multiple times via count; others are singletons
-  const singletons: DeductionType[] = ['life_insurance','earthquake_insurance','medical_expense','furusato','ideco','spouse'];
+  const singletons: DeductionType[] = ['life_insurance','earthquake_insurance','medical_expense','furusato','ideco','spouse','home_loan'];
   return DEDUCTION_ORDER.filter(type => {
     if (singletons.includes(type)) return !used.has(type);
     return true; // counts — always available, user just bumps the number
@@ -105,7 +109,19 @@ const furusatoNetDonation = computed(() => {
   return Math.max(0, furusato.value - 2000);
 });
 
+const homeLoanCreditAmount = computed(() => {
+  const entry = deductionEntries.value.find(e => e.type === 'home_loan');
+  if (!entry?.homeLoanParams) return 0;
+  return calculateHomeLoanCredit(entry.homeLoanParams);
+});
+
 const addDeduction = (type: DeductionType) => {
+  if (type === 'home_loan') {
+    editingHomeLoanId.value = null;
+    showHomeLoanWizard.value = true;
+    showDeductionPicker.value = false;
+    return;
+  }
   deductionEntries.value.push({
     id: `${type}-${Date.now()}`,
     type,
@@ -113,6 +129,32 @@ const addDeduction = (type: DeductionType) => {
   });
   showDeductionPicker.value = false;
 };
+
+const handleHomeLoanConfirm = (params: HomeLoanParams) => {
+  const credit = calculateHomeLoanCredit(params);
+  if (editingHomeLoanId.value) {
+    const entry = deductionEntries.value.find(e => e.id === editingHomeLoanId.value);
+    if (entry) {
+      entry.homeLoanParams = params;
+      entry.value = credit;
+    }
+  } else {
+    deductionEntries.value.push({
+      id: `home_loan-${Date.now()}`,
+      type: 'home_loan',
+      value: credit,
+      homeLoanParams: params,
+    });
+  }
+  showHomeLoanWizard.value = false;
+  editingHomeLoanId.value = null;
+};
+
+const openHomeLoanEdit = (id: string) => {
+  editingHomeLoanId.value = id;
+  showHomeLoanWizard.value = true;
+};
+
 
 const removeDeduction = (id: string) => {
   deductionEntries.value = deductionEntries.value.filter(d => d.id !== id);
@@ -161,6 +203,7 @@ const results = computed(() => {
     cityPerCapita: localTaxRates.cityPerCapita,
     additionalDeductions: totalAdditionalDeductions.value,
     furusatoNetDonation: furusatoNetDonation.value,
+    homeLoanCredit: homeLoanCreditAmount.value,
   });
 });
 
@@ -416,9 +459,34 @@ const pieSlices = computed((): PieSlice[] => {
               <span class="deduction-card-name">
                 {{ currentLocale === 'ja' ? DEDUCTION_DEFS[entry.type].nameJa : DEDUCTION_DEFS[entry.type].nameEn }}
               </span>
-              <button class="remove-btn" @click="removeDeduction(entry.id)" :title="t.removeDeduction">✕</button>
+              <div class="deduction-card-actions">
+                <button v-if="entry.type === 'home_loan'" class="edit-btn" @click="openHomeLoanEdit(entry.id)">{{ t.wizardEdit }}</button>
+                <button class="remove-btn" @click="removeDeduction(entry.id)" :title="t.removeDeduction">✕</button>
+              </div>
             </div>
-            <div class="deduction-card-body">
+
+            <!-- Home loan: show summary instead of input -->
+            <div v-if="entry.type === 'home_loan' && entry.homeLoanParams" class="deduction-card-body home-loan-summary">
+              <div class="hl-summary-row">
+                <span>{{ t.homeLoanMoveInYear }}</span>
+                <span>{{ entry.homeLoanParams.moveInYear }}</span>
+              </div>
+              <div class="hl-summary-row">
+                <span>{{ t.homeLoanYearEndBalance }}</span>
+                <span>{{ formatCurrency(entry.homeLoanParams.yearEndBalance) }}</span>
+              </div>
+              <div class="hl-summary-row">
+                <span>{{ t.homeLoanDeductionYear }}</span>
+                <span>{{ entry.homeLoanParams.deductionYear }}{{ t.homeLoanDeductionYearSuffix }}</span>
+              </div>
+              <div class="deduction-computed">
+                <span class="deduction-computed-label">{{ t.homeLoanEstimatedCredit }}</span>
+                <span class="deduction-computed-value">{{ formatCurrency(entry.value) }}</span>
+              </div>
+            </div>
+
+            <!-- Standard deductions: input field -->
+            <div v-else class="deduction-card-body">
               <label class="deduction-input-label">
                 {{ currentLocale === 'ja' ? DEDUCTION_DEFS[entry.type].inputLabelJa : DEDUCTION_DEFS[entry.type].inputLabelEn }}
               </label>
@@ -436,6 +504,13 @@ const pieSlices = computed((): PieSlice[] => {
                 <span class="deduction-computed-label">{{ t.deductionAmount }}</span>
                 <span class="deduction-computed-value">{{ formatCurrency(deductionAmountFor(entry)) }}</span>
               </div>
+              <a
+                v-if="entry.type === 'furusato'"
+                class="furusato-sim-link"
+                href="https://www.furusato-tax.jp/about/simulation"
+                target="_blank"
+                rel="noopener noreferrer"
+              >{{ currentLocale === 'ja' ? '控除上限額シミュレーション' : 'Calculate your max contribution' }} ↗</a>
             </div>
           </div>
         </div>
@@ -487,16 +562,17 @@ const pieSlices = computed((): PieSlice[] => {
         </div>
 
         <template v-if="deductionEntries.length > 0">
-          <div
-            class="result-row deduction user-deduction-row"
-            v-for="entry in deductionEntries"
-            :key="entry.id"
-          >
-            <span>
-              {{ currentLocale === 'ja' ? DEDUCTION_DEFS[entry.type].nameJa : DEDUCTION_DEFS[entry.type].nameEn }}
-            </span>
-            <span>- {{ formatCurrency(deductionAmountFor(entry)) }}</span>
-          </div>
+          <template v-for="entry in deductionEntries" :key="entry.id">
+            <div
+              v-if="!DEDUCTION_DEFS[entry.type].isTaxCredit"
+              class="result-row deduction user-deduction-row"
+            >
+              <span>
+                {{ currentLocale === 'ja' ? DEDUCTION_DEFS[entry.type].nameJa : DEDUCTION_DEFS[entry.type].nameEn }}
+              </span>
+              <span>- {{ formatCurrency(deductionAmountFor(entry)) }}</span>
+            </div>
+          </template>
         </template>
 
         <div class="divider"></div>
@@ -524,6 +600,10 @@ const pieSlices = computed((): PieSlice[] => {
           <span>✓ {{ t.furusatoIncomeTaxCredit }}</span>
           <span class="furusato-credit-value">+ {{ formatCurrency(results.furusatoIncomeTaxCredit) }}</span>
         </div>
+        <div class="result-row deduction sub-item home-loan-credit-row" v-if="results.homeLoanIncomeTaxCredit > 0">
+          <span>✓ {{ t.homeLoanIncomeTaxCredit }}</span>
+          <span class="home-loan-credit-value">+ {{ formatCurrency(results.homeLoanIncomeTaxCredit) }}</span>
+        </div>
 
         <div class="result-row deduction">
           <span>{{ t.residentTax }}</span>
@@ -532,6 +612,10 @@ const pieSlices = computed((): PieSlice[] => {
         <div class="result-row deduction sub-item furusato-credit-row" v-if="results.furusatoResidentTaxCredit > 0">
           <span>✓ {{ t.furusatoResidentTaxCredit }}</span>
           <span class="furusato-credit-value">+ {{ formatCurrency(results.furusatoResidentTaxCredit) }}</span>
+        </div>
+        <div class="result-row deduction sub-item home-loan-credit-row" v-if="results.homeLoanResidentTaxCredit > 0">
+          <span>✓ {{ t.homeLoanResidentTaxCredit }}</span>
+          <span class="home-loan-credit-value">+ {{ formatCurrency(results.homeLoanResidentTaxCredit) }}</span>
         </div>
         <div class="result-row deduction sub-item">
           <span>└ {{ t.residentPref }}</span>
@@ -586,6 +670,16 @@ const pieSlices = computed((): PieSlice[] => {
         </div>
       </div>
     </div>
+
+    <!-- Home Loan Wizard Modal -->
+    <HomeLoanWizard
+      v-if="showHomeLoanWizard"
+      :t="t"
+      :locale="currentLocale"
+      :initial="editingHomeLoanId ? (deductionEntries.find(e => e.id === editingHomeLoanId)?.homeLoanParams ?? null) : null"
+      @confirm="handleHomeLoanConfirm"
+      @cancel="showHomeLoanWizard = false; editingHomeLoanId = null"
+    />
 
     <!-- Visualization Panel -->
     <div class="panel viz-panel">
@@ -1207,6 +1301,71 @@ input[type=number] {
 .furusato-credit-value {
   font-weight: 600;
   color: #1a6b50;
+}
+
+.home-loan-credit-row {
+  color: #3b5bdb;
+}
+
+.home-loan-credit-value {
+  font-weight: 600;
+  color: #3b5bdb;
+}
+
+/* Home loan deduction card */
+.deduction-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.edit-btn {
+  background: none;
+  border: 1px solid #ddd;
+  color: #666;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.edit-btn:hover {
+  color: #111;
+  border-color: #999;
+  background: #f9f9f9;
+}
+
+.furusato-sim-link {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.78rem;
+  color: #3b5bdb;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.furusato-sim-link:hover {
+  color: #111;
+  text-decoration: underline;
+}
+
+.home-loan-summary {
+  padding: 0.6rem 0.9rem !important;
+}
+
+.hl-summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  color: #666;
+  padding: 0.2rem 0;
+}
+
+.hl-summary-row span:last-child {
+  font-weight: 600;
+  color: #333;
 }
 
 .deduction-total {
