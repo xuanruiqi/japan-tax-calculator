@@ -1,10 +1,74 @@
-interface Translations {
-  [key: string]: {
-    [key: string]: string;
-  };
+export interface LocaleStrings {
+  title: string;
+  subtitle: string;
+  locationSettings: string;
+  incomeDetails: string;
+  annualBreakdown: string;
+  monthlyPay: string;
+  bonusPay: string;
+  empPrefecture: string;
+  empPrefectureSub: string;
+  resPrefecture: string;
+  resPrefectureSub: string;
+  municipality: string;
+  municipalitySub: string;
+  standardCity: string;
+  ageGroup: string;
+  ageGroupSub: string;
+  monthlySalary: string;
+  annualBonus: string;
+  prevIncome: string;
+  prevIncomeSub: string;
+  prevIncomePlaceholder: string;
+  ageUnder40: string;
+  age40to64: string;
+  age65over: string;
+  showSettings: string;
+  hideSettings: string;
+  unionSelect: string;
+  unionKyokai: string;
+  unionIts: string;
+  unionTjk: string;
+  unionOther: string;
+  customHealth: string;
+  customHealthSub: string;
+  customKaigo: string;
+  customKaigoSub: string;
+  customPension: string;
+  customPensionSub: string;
+  grossIncome: string;
+  employmentIncomeDeduction: string;
+  employmentIncome: string;
+  basicExemption: string;
+  healthIns: string;
+  nursingCare: string;
+  pension: string;
+  incomeTax: string;
+  taxableIncome: string;
+  taxableIncomeSub: string;
+  marginalRateLabel: string;
+  marginalRateSurtax: string;
+  residentTax: string;
+  residentPref: string;
+  residentMuni: string;
+  totalDeductions: string;
+  netPay: string;
+  gradeString: string;
+  cashCostContributions: string;
+  disposableIncome: string;
+  disposableIncomeSub: string;
+  furusatoCredit: string;
+  furusatoIncomeTaxCredit: string;
+  furusatoResidentTaxCredit: string;
+  deductionsSection: string;
+  addDeduction: string;
+  noDeductions: string;
+  removeDeduction: string;
+  deductionAmount: string;
+  totalAdditionalDeductions: string;
 }
 
-export const translations: Translations = {
+export const translations: Record<'en' | 'ja', LocaleStrings> = {
   en: {
     title: 'Japan Tax Calculator',
     subtitle: 'Estimate your take-home pay',

@@ -80,6 +80,7 @@ function getStandardRemunerationGrade(salary: number, maxBracketValue: number): 
   if (salary <= 0) return { value: 0, grade: 0 };
   for (let i = 0; i < brackets.length; i++) {
     const bracket = brackets[i];
+    if (!bracket) continue;
     if (salary >= bracket.min && salary < bracket.max) {
       if (bracket.value >= maxBracketValue) {
         const maxIndex = brackets.findIndex(b => b.value === maxBracketValue);

@@ -134,7 +134,7 @@ const results = computed(() => {
   const salary = Number(monthlySalaryInput.value) || 0;
   const bonus = Number(annualBonusInput.value) || 0;
   const prevIncomeRaw = previousYearIncomeInput.value;
-  const prevIncome = (prevIncomeRaw === null || prevIncomeRaw === '') ? null : Number(prevIncomeRaw);
+  const prevIncome = prevIncomeRaw === null ? null : Number(prevIncomeRaw);
   const hRate = customHealthRate.value !== null ? Number(customHealthRate.value) / 100 : 0.0499;
   const kRate = customKaigoRate.value !== null ? Number(customKaigoRate.value) / 100 : 0;
   const pRate = customPensionRate.value !== null ? Number(customPensionRate.value) / 100 : 0.0915;

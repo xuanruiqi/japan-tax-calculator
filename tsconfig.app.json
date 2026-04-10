@@ -1,8 +1,13 @@
 {
-  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  "extends": "@vue/tsconfig/tsconfig.json",
   "include": ["env.d.ts", "src/**/*", "src/**/*.vue"],
   "exclude": ["src/**/__tests__/*"],
   "compilerOptions": {
+    // Inlined from @vue/tsconfig/tsconfig.dom.json (not resolvable in TS 6
+    // because @vue/tsconfig@0.9.1 has an empty "exports" map).
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": [],
+
     // Extra safety for array and object lookups, but may have false positives.
     "noUncheckedIndexedAccess": true,
 
