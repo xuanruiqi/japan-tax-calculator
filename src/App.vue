@@ -488,7 +488,6 @@ const formatCurrency = (value: number) => {
           <span>└ {{ t.residentPref }}</span>
           <span>- {{ formatCurrency(results.residentTaxPrefectural) }}</span>
         </div>
-        </div>
         <div class="result-row deduction sub-item">
           <span>└ {{ t.residentMuni }}</span>
           <span>- {{ formatCurrency(results.residentTaxMunicipal) }}</span>
