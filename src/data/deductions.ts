@@ -34,6 +34,7 @@ export interface DeductionMeta {
   hasCashCost?: boolean;  // true if the contribution itself leaves the user's pocket (e.g. iDeCo)
   isTaxCredit?: boolean;  // true if this offsets taxes directly rather than reducing taxable income
   hasWizard?: boolean;    // true if this type uses a wizard instead of a simple input field
+  ntaUrl?: string;        // National Tax Agency page explaining this deduction
 }
 
 export const DEDUCTION_DEFS: Record<DeductionType, DeductionMeta> = {
@@ -47,6 +48,7 @@ export const DEDUCTION_DEFS: Record<DeductionType, DeductionMeta> = {
     inputLabelJa: '年間保険料 (円)',
     inputIsCount: false,
     maxInput: 400000,
+    ntaUrl: 'https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1140.htm',
   },
   earthquake_insurance: {
     type: 'earthquake_insurance',
@@ -58,6 +60,7 @@ export const DEDUCTION_DEFS: Record<DeductionType, DeductionMeta> = {
     inputLabelJa: '年間保険料 (円)',
     inputIsCount: false,
     maxInput: 50000,
+    ntaUrl: 'https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1145.htm',
   },
   medical_expense: {
     type: 'medical_expense',
@@ -68,6 +71,7 @@ export const DEDUCTION_DEFS: Record<DeductionType, DeductionMeta> = {
     inputLabelEn: 'Total Medical Costs (JPY/year)',
     inputLabelJa: '医療費合計 (円)',
     inputIsCount: false,
+    ntaUrl: 'https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1120.htm',
   },
   furusato: {
     type: 'furusato',
@@ -80,6 +84,7 @@ export const DEDUCTION_DEFS: Record<DeductionType, DeductionMeta> = {
     inputIsCount: false,
     isTaxCredit: true,
     hasCashCost: true, // full donation leaves user's pocket; tax credits offset (donation-2000) back
+    ntaUrl: 'https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1155.htm',
   },
   ideco: {
     type: 'ideco',
@@ -92,6 +97,7 @@ export const DEDUCTION_DEFS: Record<DeductionType, DeductionMeta> = {
     inputIsCount: false,
     maxInput: 23000,
     hasCashCost: true,  // contributions go into a locked account, reducing disposable income
+    ntaUrl: 'https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1135.htm',
   },
   spouse: {
     type: 'spouse',
@@ -103,6 +109,7 @@ export const DEDUCTION_DEFS: Record<DeductionType, DeductionMeta> = {
     inputLabelJa: '配偶者の年収 (円)',
     inputIsCount: false,
     maxInput: 1330000,
+    ntaUrl: 'https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1191.htm',
   },
   dependent_general: {
     type: 'dependent_general',
@@ -113,6 +120,7 @@ export const DEDUCTION_DEFS: Record<DeductionType, DeductionMeta> = {
     inputLabelEn: 'Number of Dependents',
     inputLabelJa: '人数',
     inputIsCount: true,
+    ntaUrl: 'https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1180.htm',
   },
   dependent_specified: {
     type: 'dependent_specified',
@@ -123,6 +131,7 @@ export const DEDUCTION_DEFS: Record<DeductionType, DeductionMeta> = {
     inputLabelEn: 'Number of Dependents',
     inputLabelJa: '人数',
     inputIsCount: true,
+    ntaUrl: 'https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1180.htm',
   },
   dependent_aged: {
     type: 'dependent_aged',
@@ -133,6 +142,7 @@ export const DEDUCTION_DEFS: Record<DeductionType, DeductionMeta> = {
     inputLabelEn: 'Number of Dependents',
     inputLabelJa: '人数',
     inputIsCount: true,
+    ntaUrl: 'https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1180.htm',
   },
   home_loan: {
     type: 'home_loan',
@@ -145,6 +155,7 @@ export const DEDUCTION_DEFS: Record<DeductionType, DeductionMeta> = {
     inputIsCount: false,
     isTaxCredit: true,
     hasWizard: true,
+    ntaUrl: 'https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1211-1.htm',
   },
 };
 

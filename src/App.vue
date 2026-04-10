@@ -45,6 +45,17 @@ const customKaigoRate = ref<number | null>(0);
 const customPensionRate = ref<number | null>(9.15);
 const customEmploymentInsRate = ref<number | null>(0.6);
 
+type IndustryType = 'general' | 'agriForestry' | 'construction';
+const selectedIndustry = ref<IndustryType>('general');
+
+const handleIndustryChange = () => {
+  if (selectedIndustry.value === 'general') {
+    customEmploymentInsRate.value = 0.6;
+  } else {
+    customEmploymentInsRate.value = 0.7;
+  }
+};
+
 const updateKaigoRate = () => {
   if (ageGroup.value !== '40to64') {
     customKaigoRate.value = 0;
@@ -435,6 +446,17 @@ const pieSlices = computed((): PieSlice[] => {
           </div>
 
           <div class="input-group">
+            <label for="industrySelect">{{ t.employmentInsIndustry }}</label>
+            <div class="input-wrapper">
+              <select id="industrySelect" v-model="selectedIndustry" @change="handleIndustryChange" class="styled-select">
+                <option value="general">{{ t.industryGeneral }}</option>
+                <option value="agriForestry">{{ t.industryAgriForestry }}</option>
+                <option value="construction">{{ t.industryConstruction }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="input-group">
             <label for="customEmploymentInsRate">{{ t.customEmploymentIns }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.customEmploymentInsSub }}</small></label>
             <div class="input-wrapper has-percentage">
               <input
@@ -505,6 +527,13 @@ const pieSlices = computed((): PieSlice[] => {
                 <span class="deduction-computed-label">{{ t.homeLoanEstimatedCredit }}</span>
                 <span class="deduction-computed-value">{{ formatCurrency(entry.value) }}</span>
               </div>
+              <a
+                v-if="DEDUCTION_DEFS[entry.type].ntaUrl"
+                class="nta-reference-link"
+                :href="DEDUCTION_DEFS[entry.type].ntaUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+              >{{ t.ntaReference }} ↗</a>
             </div>
 
             <!-- Standard deductions: input field -->
@@ -533,6 +562,13 @@ const pieSlices = computed((): PieSlice[] => {
                 target="_blank"
                 rel="noopener noreferrer"
               >{{ currentLocale === 'ja' ? '控除上限額シミュレーション' : 'Calculate your max contribution' }} ↗</a>
+              <a
+                v-if="DEDUCTION_DEFS[entry.type].ntaUrl"
+                class="nta-reference-link"
+                :href="DEDUCTION_DEFS[entry.type].ntaUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+              >{{ t.ntaReference }} ↗</a>
             </div>
           </div>
         </div>
@@ -1364,7 +1400,8 @@ input[type=number] {
   background: #f9f9f9;
 }
 
-.furusato-sim-link {
+.furusato-sim-link,
+.nta-reference-link {
   display: block;
   margin-top: 0.45rem;
   font-size: 0.78rem;
@@ -1373,7 +1410,8 @@ input[type=number] {
   transition: color 0.2s;
 }
 
-.furusato-sim-link:hover {
+.furusato-sim-link:hover,
+.nta-reference-link:hover {
   color: #111;
   text-decoration: underline;
 }

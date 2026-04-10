@@ -36,6 +36,10 @@ export interface LocaleStrings {
   customKaigoSub: string;
   customPension: string;
   customPensionSub: string;
+  employmentInsIndustry: string;
+  industryGeneral: string;
+  industryAgriForestry: string;
+  industryConstruction: string;
   customEmploymentIns: string;
   customEmploymentInsSub: string;
   grossIncome: string;
@@ -95,6 +99,7 @@ export interface LocaleStrings {
   wizardConfirm: string;
   wizardCancel: string;
   wizardEdit: string;
+  ntaReference: string;
 }
 
 export const translations: Record<'en' | 'ja', LocaleStrings> = {
@@ -147,6 +152,10 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     customKaigoSub: '(Employee Share)',
     customPension: 'Pension Rate (%)',
     customPensionSub: '(Employee Share - Default: 9.15%)',
+    employmentInsIndustry: 'Industry Type (Employment Insurance)',
+    industryGeneral: 'General - 0.6%',
+    industryAgriForestry: 'Agriculture, Forestry, Fishery & Sake Brewing - 0.7%',
+    industryConstruction: 'Construction - 0.7%',
     customEmploymentIns: 'Employment Insurance Rate (%)',
     customEmploymentInsSub: '(Employee Share - Default: 0.6%)',
     
@@ -212,6 +221,7 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     wizardConfirm: 'Confirm',
     wizardCancel: 'Cancel',
     wizardEdit: 'Edit',
+    ntaReference: 'NTA guide',
   },
   ja: {
     title: '手取り計算ツール (日本)',
@@ -257,6 +267,10 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     customKaigoSub: '(従業員負担分)',
     customPension: '厚生年金料率 (%)',
     customPensionSub: '(従業員負担分 - デフォルト: 9.15%)',
+    employmentInsIndustry: '事業の種類（雇用保険）',
+    industryGeneral: '一般の事業 - 0.6%',
+    industryAgriForestry: '農林水産・清酒製造業 - 0.7%',
+    industryConstruction: '建設業 - 0.7%',
     customEmploymentIns: '雇用保険料率 (%)',
     customEmploymentInsSub: '(従業員負担分 - デフォルト: 0.6%)',
     
@@ -321,5 +335,6 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     wizardConfirm: '確定',
     wizardCancel: 'キャンセル',
     wizardEdit: '編集',
+    ntaReference: '国税庁の解説',
   }
 };
