@@ -43,6 +43,7 @@ const showAdvancedOptions = ref<boolean>(false);
 const customHealthRate = ref<number | null>(4.99);
 const customKaigoRate = ref<number | null>(0);
 const customPensionRate = ref<number | null>(9.15);
+const customEmploymentInsRate = ref<number | null>(0.6);
 
 const updateKaigoRate = () => {
   if (ageGroup.value !== '40to64') {
@@ -181,6 +182,7 @@ const results = computed(() => {
   const hRate = customHealthRate.value !== null ? Number(customHealthRate.value) / 100 : 0.0499;
   const kRate = customKaigoRate.value !== null ? Number(customKaigoRate.value) / 100 : 0;
   const pRate = customPensionRate.value !== null ? Number(customPensionRate.value) / 100 : 0.0915;
+  const eRate = customEmploymentInsRate.value !== null ? Number(customEmploymentInsRate.value) / 100 : 0.006;
 
   const prefData = RESIDENT_TAX_RATES[residencePrefecture.value];
   let localTaxRates = prefData ? prefData.default : { prefIncomeRate: 0.04, cityIncomeRate: 0.06, prefPerCapita: 1500, cityPerCapita: 3500 };
@@ -197,6 +199,7 @@ const results = computed(() => {
     healthInsuranceRate: hRate,
     kaigoInsuranceRate: kRate,
     pensionRate: pRate,
+    employmentInsuranceRate: eRate,
     prefIncomeRate: localTaxRates.prefIncomeRate,
     cityIncomeRate: localTaxRates.cityIncomeRate,
     prefPerCapita: localTaxRates.prefPerCapita,
@@ -231,6 +234,11 @@ const pieSlices = computed((): PieSlice[] => {
       label: locale === 'ja' ? '厚生年金' : 'Pension',
       value: r.pension,
       color: '#3b82f6',
+    },
+    {
+      label: locale === 'ja' ? '雇用保険' : 'Employment Insurance',
+      value: r.employmentInsurance,
+      color: '#14b8a6',
     },
     {
       label: locale === 'ja' ? '所得税' : 'Income Tax',
@@ -415,10 +423,24 @@ const pieSlices = computed((): PieSlice[] => {
           <div class="input-group">
             <label for="customPensionRate">{{ t.customPension }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.customPensionSub }}</small></label>
             <div class="input-wrapper has-percentage">
-              <input 
+              <input
                 id="customPensionRate"
-                type="number" 
-                v-model.number="customPensionRate" 
+                type="number"
+                v-model.number="customPensionRate"
+                min="0"
+                step="0.01"
+              />
+              <span class="percentage-symbol">%</span>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="customEmploymentInsRate">{{ t.customEmploymentIns }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.customEmploymentInsSub }}</small></label>
+            <div class="input-wrapper has-percentage">
+              <input
+                id="customEmploymentInsRate"
+                type="number"
+                v-model.number="customEmploymentInsRate"
                 min="0"
                 step="0.01"
               />
@@ -543,7 +565,7 @@ const pieSlices = computed((): PieSlice[] => {
         <div class="divider"></div>
 
         <div class="result-row deduction social-insurance-row">
-          <span>{{ t.healthIns }} <small class="bracket-info">{{ t.gradeString }} {{ results.healthBracket }}</small></span>
+          <span>{{ t.healthIns }} <small class="bracket-info">{{ t.gradeString }} {{ results.healthBracket }} ({{ formatCurrency(results.healthStandardRemuneration) }})</small></span>
           <span class="social-ins-value">- {{ formatCurrency(results.healthInsurance) }}</span>
         </div>
 
@@ -553,8 +575,13 @@ const pieSlices = computed((): PieSlice[] => {
         </div>
         
         <div class="result-row deduction social-insurance-row">
-          <span>{{ t.pension }} <small class="bracket-info">{{ t.gradeString }} {{ results.pensionBracket }}</small></span>
+          <span>{{ t.pension }} <small class="bracket-info">{{ t.gradeString }} {{ results.pensionBracket }} ({{ formatCurrency(results.pensionStandardRemuneration) }})</small></span>
           <span class="social-ins-value">- {{ formatCurrency(results.pension) }}</span>
+        </div>
+
+        <div class="result-row deduction social-insurance-row">
+          <span>{{ t.employmentIns }}</span>
+          <span class="social-ins-value">- {{ formatCurrency(results.employmentInsurance) }}</span>
         </div>
         <div class="result-row deduction">
           <span>{{ t.basicExemption }}</span>

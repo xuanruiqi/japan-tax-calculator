@@ -21,8 +21,11 @@ export interface TaxCalculationResult {
   netPay: number;
   monthlyNet: number;
   bonusNet: number;
+  employmentInsurance: number;
   healthBracket: number;
   pensionBracket: number;
+  healthStandardRemuneration: number;
+  pensionStandardRemuneration: number;
 }
 
 const brackets = [
@@ -65,17 +68,17 @@ const brackets = [
   { min: 695000, max: 730000, value: 710000 },
   { min: 730000, max: 770000, value: 750000 },
   { min: 770000, max: 810000, value: 790000 },
-  { min: 810000, max: 850000, value: 830000 },
-  { min: 850000, max: 890000, value: 880000 },
-  { min: 890000, max: 930000, value: 930000 },
-  { min: 930000, max: 970000, value: 980000 },
-  { min: 970000, max: 1010000, value: 1030000 },
-  { min: 1010000, max: 1050000, value: 1090000 },
-  { min: 1050000, max: 1090000, value: 1150000 },
-  { min: 1090000, max: 1130000, value: 1210000 },
-  { min: 1130000, max: 1170000, value: 1270000 },
-  { min: 1170000, max: 1210000, value: 1330000 },
-  { min: 1210000, max: Infinity, value: 1390000 }
+  { min: 810000, max: 855000, value: 830000 },
+  { min: 855000, max: 905000, value: 880000 },
+  { min: 905000, max: 955000, value: 930000 },
+  { min: 955000, max: 1005000, value: 980000 },
+  { min: 1005000, max: 1060000, value: 1030000 },
+  { min: 1060000, max: 1120000, value: 1090000 },
+  { min: 1120000, max: 1180000, value: 1150000 },
+  { min: 1180000, max: 1240000, value: 1210000 },
+  { min: 1240000, max: 1300000, value: 1270000 },
+  { min: 1300000, max: 1360000, value: 1330000 },
+  { min: 1360000, max: Infinity, value: 1390000 }
 ];
 
 function getStandardRemunerationGrade(salary: number, maxBracketValue: number): { value: number, grade: number } {
@@ -100,6 +103,7 @@ export interface TaxCalculationOptions {
   healthInsuranceRate?: number;
   kaigoInsuranceRate?: number;
   pensionRate?: number;
+  employmentInsuranceRate?: number;
   prefIncomeRate?: number;
   cityIncomeRate?: number;
   prefPerCapita?: number;
@@ -114,6 +118,7 @@ export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: n
   const HEALTH_INS_RATE = options.healthInsuranceRate !== undefined ? options.healthInsuranceRate : 0.0499; // Default 9.98% / 2
   const KAIGO_RATE = options.kaigoInsuranceRate !== undefined ? options.kaigoInsuranceRate : 0.0;
   const PENSION_RATE = options.pensionRate !== undefined ? options.pensionRate : 0.0915;    // Default 18.3% / 2
+  const EMP_INS_RATE = options.employmentInsuranceRate !== undefined ? options.employmentInsuranceRate : 0.006; // Default 0.6%
   const previousYearGross = options.previousYearGross ?? null;
 
   const healthObj = getStandardRemunerationGrade(monthlySalary, 1390000);
@@ -140,10 +145,15 @@ export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: n
   const annualHealth = monthlyHealth * 12 + bonusHealth;
   const annualKaigo = monthlyKaigo * 12 + bonusKaigo;
   const annualPension = monthlyPension * 12 + bonusPension;
-  const totalSocialInsurance = annualHealth + annualKaigo + annualPension;
 
   // --- Income ---
   const annualGross = monthlySalary * 12 + annualBonus;
+
+  // --- Employment Insurance (雇用保険) — calculated on gross pay ---
+  const annualEmploymentInsurance = Math.floor(annualGross * EMP_INS_RATE);
+  const monthlyEmploymentInsurance = Math.floor(monthlySalary * EMP_INS_RATE);
+
+  const totalSocialInsurance = annualHealth + annualKaigo + annualPension + annualEmploymentInsurance;
 
   // --- Employment Income Deduction (給与所得控除) ---
   let employmentIncomeDeduction = 0;
@@ -286,9 +296,10 @@ export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: n
   let bonusNet = 0;
   
   if (annualGross > 0) {
-    monthlyNet = monthlySalary - monthlyHealth - monthlyKaigo - monthlyPension - Math.floor((adjustedIncomeTax + adjustedResidentTax) * (monthlySalary / annualGross));
+    monthlyNet = monthlySalary - monthlyHealth - monthlyKaigo - monthlyPension - monthlyEmploymentInsurance - Math.floor((adjustedIncomeTax + adjustedResidentTax) * (monthlySalary / annualGross));
     if (annualBonus > 0) {
-      bonusNet = annualBonus - bonusHealth - bonusKaigo - bonusPension - Math.floor((adjustedIncomeTax + adjustedResidentTax) * (annualBonus / annualGross));
+      const bonusEmploymentInsurance = Math.floor(annualBonus * EMP_INS_RATE);
+      bonusNet = annualBonus - bonusHealth - bonusKaigo - bonusPension - bonusEmploymentInsurance - Math.floor((adjustedIncomeTax + adjustedResidentTax) * (annualBonus / annualGross));
     }
   }
 
@@ -297,6 +308,7 @@ export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: n
     healthInsurance: annualHealth,
     kaigoInsurance: annualKaigo,
     pension: annualPension,
+    employmentInsurance: annualEmploymentInsurance,
     incomeTax: adjustedIncomeTax,
     marginalRate,
     effectiveMarginalRate,
@@ -316,6 +328,8 @@ export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: n
     monthlyNet,
     bonusNet,
     healthBracket,
-    pensionBracket
+    pensionBracket,
+    healthStandardRemuneration: monthlyStandard,
+    pensionStandardRemuneration: monthlyStandardPension
   };
 }

@@ -36,6 +36,8 @@ export interface LocaleStrings {
   customKaigoSub: string;
   customPension: string;
   customPensionSub: string;
+  customEmploymentIns: string;
+  customEmploymentInsSub: string;
   grossIncome: string;
   employmentIncomeDeduction: string;
   employmentIncome: string;
@@ -43,6 +45,7 @@ export interface LocaleStrings {
   healthIns: string;
   nursingCare: string;
   pension: string;
+  employmentIns: string;
   incomeTax: string;
   taxableIncome: string;
   taxableIncomeSub: string;
@@ -144,6 +147,8 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     customKaigoSub: '(Employee Share)',
     customPension: 'Pension Rate (%)',
     customPensionSub: '(Employee Share - Default: 9.15%)',
+    customEmploymentIns: 'Employment Insurance Rate (%)',
+    customEmploymentInsSub: '(Employee Share - Default: 0.6%)',
     
     // Breakdown
     grossIncome: 'Gross Income',
@@ -153,6 +158,7 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     healthIns: 'Health Insurance',
     nursingCare: 'Nursing Care',
     pension: 'Pension',
+    employmentIns: 'Employment Insurance',
     incomeTax: 'Income Tax',
     taxableIncome: 'Taxable Income',
     taxableIncomeSub: 'After all deductions',
@@ -251,6 +257,8 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     customKaigoSub: '(従業員負担分)',
     customPension: '厚生年金料率 (%)',
     customPensionSub: '(従業員負担分 - デフォルト: 9.15%)',
+    customEmploymentIns: '雇用保険料率 (%)',
+    customEmploymentInsSub: '(従業員負担分 - デフォルト: 0.6%)',
     
     grossIncome: '額面給与',
     employmentIncomeDeduction: '給与所得控除',
@@ -259,6 +267,7 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     healthIns: '健康保険',
     nursingCare: '介護保険',
     pension: '厚生年金',
+    employmentIns: '雇用保険',
     incomeTax: '所得税',
     taxableIncome: '課税所得額',
     taxableIncomeSub: '各種控除後',
