@@ -149,7 +149,7 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     prevIncome: 'Previous Year Gross Income (JPY)',
     prevIncomeSub: '(Optional: For accurate Resident Tax)',
     prevIncomePlaceholder: 'Same as current if empty',
-    addIncome: 'Add Income',
+    addIncome: '+ Add Income',
     salaryIncomeName: 'Salaried Income',
     salaryIncomeDesc: 'Employment income (給与所得)',
     businessIncomeName: 'Business / Miscellaneous Income',
@@ -284,7 +284,7 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     prevIncome: '前年の総収入 (円)',
     prevIncomeSub: '(任意: 住民税の正確な計算に必要)',
     prevIncomePlaceholder: '空欄の場合は今年の収入と同額とみなす',
-    addIncome: '所得を追加',
+    addIncome: '+ 所得を追加',
     salaryIncomeName: '給与所得',
     salaryIncomeDesc: '給与・賞与による所得',
     businessIncomeName: '事業所得・雑所得',
@@ -356,7 +356,7 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
 
     // Deductions section
     deductionsSection: '所得控除',
-    addDeduction: '◦控除を追加',
+    addDeduction: '+ 控除を追加',
     noDeductions: 'まだ控除が追加されていません。',
     removeDeduction: '削除',
     deductionAmount: '控除額:',

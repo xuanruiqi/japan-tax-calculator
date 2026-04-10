@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { calculateTaxesAndInsurance, getStandardRemunerationGrade } from './utils/taxCalculation';
 import { PREFECTURES_LIST, KYOKAI_KENPO_RATES, RESIDENT_TAX_RATES, PREFECTURE_NAMES, CITY_NAMES } from './data/taxRates';
 import { translations } from './locales';
@@ -81,6 +81,21 @@ type AgeGroupType = 'under40' | '40to64' | '65over';
 const ageGroup = ref<AgeGroupType>('under40');
 
 const enrolledEmployeeSI = ref<boolean>(true);
+
+const tooltipStyle = ref<Record<string, string>>({});
+const showTooltip = ref(false);
+const onTooltipEnter = (e: MouseEvent) => {
+  const el = e.currentTarget as HTMLElement;
+  const rect = el.getBoundingClientRect();
+  tooltipStyle.value = {
+    top: `${rect.bottom + 8}px`,
+    left: `${Math.min(rect.left, window.innerWidth - 340)}px`,
+  };
+  showTooltip.value = true;
+};
+const onTooltipLeave = () => {
+  showTooltip.value = false;
+};
 
 type NhiMode = 'manual' | 'auto';
 const nhiMode = ref<NhiMode>('manual');
@@ -267,6 +282,15 @@ watch(ageGroup, () => {
 });
 
 const showDeductionPicker = ref(false);
+
+const onClickOutsidePicker = () => {
+  showIncomePicker.value = false;
+  showDeductionPicker.value = false;
+};
+
+onMounted(() => document.addEventListener('click', onClickOutsidePicker));
+onUnmounted(() => document.removeEventListener('click', onClickOutsidePicker));
+
 const showHomeLoanWizard = ref(false);
 const editingHomeLoanId = ref<string | null>(null);
 
@@ -792,7 +816,10 @@ const pieSlices = computed((): PieSlice[] => {
                     <input type="checkbox" v-model="entry.joinsSocialInsurance" />
                     <span class="switch-slider"></span>
                   </span>
-                  <span>{{ t.joinsSocialInsurance }}</span>
+                  <span class="si-toggle-label">
+                    {{ t.joinsSocialInsurance }}
+                    <span class="tooltip-trigger" @mouseenter="onTooltipEnter" @mouseleave="onTooltipLeave">?</span>
+                  </span>
                 </label>
               </template>
               <!-- Business inputs -->
@@ -812,7 +839,7 @@ const pieSlices = computed((): PieSlice[] => {
           </div>
         </div>
 
-        <div class="deduction-add-wrapper" style="margin-top: 0.75rem;">
+        <div class="deduction-add-wrapper" style="margin-top: 0.75rem;" @click.stop>
           <button class="add-deduction-btn" @click="showIncomePicker = !showIncomePicker">{{ t.addIncome }}</button>
           <div v-if="showIncomePicker" class="deduction-picker">
             <button class="picker-item" @click="addIncomeEntry('salary')">
@@ -846,7 +873,7 @@ const pieSlices = computed((): PieSlice[] => {
       <div class="input-section deductions-section">
         <div class="deductions-header">
           <h2>{{ t.deductionsSection }}</h2>
-          <div class="deduction-add-wrapper">
+          <div class="deduction-add-wrapper" @click.stop>
             <button class="add-deduction-btn" @click="showDeductionPicker = !showDeductionPicker">
               {{ t.addDeduction }}
             </button>
@@ -1158,6 +1185,31 @@ const pieSlices = computed((): PieSlice[] => {
       />
     </div>
   </div>
+  <Teleport to="body">
+    <div v-if="showTooltip" class="tooltip-content" :style="tooltipStyle">
+      <template v-if="currentLocale === 'ja'">
+        以下のいずれかに該当する場合、勤務先の社会保険に加入する必要があります。<br/><br/>
+        <b>① フルタイムの3/4以上</b><br/>
+        正社員の所定労働時間・日数の3/4以上勤務している場合<br/><br/>
+        <b>② 以下の5条件をすべて満たす場合</b><br/>
+        ・週の所定労働時間が20時間以上<br/>
+        ・所定内賃金が月額8.8万円以上（残業代・交通費・ボーナス除く）<br/>
+        ・雇用期間が2ヶ月超の見込み<br/>
+        ・昼間学生でないこと<br/>
+        ・従業員51人以上の企業であること
+      </template>
+      <template v-else>
+        You must enroll in employer social insurance if either of the following applies:<br/><br/>
+        <b>1. Work 3/4+ of full-time hours and days</b><br/><br/>
+        <b>2. All five conditions are met:</b><br/>
+        - Weekly working hours: 20+ hours/week<br/>
+        - Monthly wage: ¥88,000+ (base pay only, excl. overtime, commuting, bonus)<br/>
+        - Employment period: expected to exceed 2 months<br/>
+        - Not a full-time student<br/>
+        - Employer has 51+ employees (pension-insured)
+      </template>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -1637,7 +1689,6 @@ input[type=number] {
 .deduction-card {
   border: 1px solid #e6e6e6;
   border-radius: 8px;
-  overflow: hidden;
   background: #fefefe;
 }
 
@@ -1648,6 +1699,7 @@ input[type=number] {
   padding: 0.6rem 0.9rem;
   background: #f7f7f7;
   border-bottom: 1px solid #eee;
+  border-radius: 8px 8px 0 0;
 }
 
 .deduction-card-name {
@@ -1734,6 +1786,44 @@ input[type=number] {
   outline: none;
   border-color: #999;
   background: #fff;
+}
+
+.si-toggle-label {
+  position: relative;
+}
+
+.tooltip-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 0.3rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #888;
+  background: #eee;
+  border-radius: 50%;
+  cursor: help;
+  vertical-align: middle;
+  position: relative;
+}
+
+.tooltip-content {
+  position: fixed;
+  z-index: 10000;
+  width: 320px;
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #333;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  white-space: normal;
+  pointer-events: none;
 }
 
 .si-toggle {
