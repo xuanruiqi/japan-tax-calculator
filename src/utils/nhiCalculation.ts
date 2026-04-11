@@ -127,6 +127,18 @@ const MUSASHINO_RATES: WardRates = {
 };
 
 /**
+ * つくば市 (Tsukuba) — 令和8年度 (FY2026)
+ * 子ども分 均等割: ¥1,400 base + ¥200 age-18+ surcharge; adults pay ¥1,600.
+ * Source: https://www.city.tsukuba.lg.jp/soshikikarasagasu/hokembukokuminkenkohokenka/gyomuannai/4/1/1001243.html
+ */
+const TSUKUBA_RATES: WardRates = {
+  shotokuMedical: 0.0770, kintowariMedical: 38500, capMedical: 670000,
+  shotokuSupport: 0.0315, kintowariSupport: 15500, capSupport: 260000,
+  shotokuKaigo:   0.0250, kintowariKaigo:   15500, capKaigo:   170000,
+  shotokuKodomo:  0.0029, kintowariKodomo:   1600, capKodomo:   30000,
+};
+
+/**
  * 横浜市 (Yokohama) — 令和8年度 (FY2026)
  * 子ども分 均等割 = ¥1,690 base + ¥80 age-18+ surcharge; adults pay ¥1,770.
  * Source: https://www.city.yokohama.lg.jp/kurashi/koseki-zei-hoken/kokuho/hokenryo/r7hokennryouritu.html
@@ -143,7 +155,7 @@ const YOKOHAMA_RATES: WardRates = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** City IDs that have municipality auto-calculation logic. */
-const SUPPORTED_MUNICIPALITY_CITIES = new Set(['tokyo_23ku', 'musashino', 'yokohama']);
+const SUPPORTED_MUNICIPALITY_CITIES = new Set(['tokyo_23ku', 'musashino', 'yokohama', 'tsukuba']);
 
 export function isMunicipalitySupported(city: string): boolean {
   return SUPPORTED_MUNICIPALITY_CITIES.has(city);
@@ -162,6 +174,7 @@ export function calculateMunicipalityNhi(
     case 'tokyo_23ku': return calculateWardNhi(totalIncome, base, ageGroup, TOKYO_WARD_RATES);
     case 'musashino':  return calculateWardNhi(totalIncome, base, ageGroup, MUSASHINO_RATES);
     case 'yokohama':   return calculateWardNhi(totalIncome, base, ageGroup, YOKOHAMA_RATES);
+    case 'tsukuba':    return calculateWardNhi(totalIncome, base, ageGroup, TSUKUBA_RATES);
     default:           return null;
   }
 }

@@ -66,6 +66,7 @@ export const PREFECTURE_NAMES: Record<string, LocaleNames> = {
 };
 
 export const CITY_NAMES: Record<string, LocaleNames> = {
+  tsukuba:        { ja: 'つくば市',   en: 'Tsukuba' },
   sapporo:        { ja: '札幌市',     en: 'Sapporo' },
   yubari:         { ja: '夕張市',     en: 'Yubari' },
   sendai:         { ja: '仙台市',     en: 'Sendai' },
@@ -163,7 +164,7 @@ export const RESIDENT_TAX_RATES: Record<string, PrefectureOverrides> = {
   akita:     { default: { ...baseStandard, prefPerCapita: 2300 }, cities: {} },
   yamagata:  { default: { ...baseStandard, prefPerCapita: 2500 }, cities: {} },
   fukushima: { default: { ...baseStandard, prefPerCapita: 2500 }, cities: {} },
-  ibaraki:   { default: { ...baseStandard, prefPerCapita: 2500 }, cities: {} },
+  ibaraki:   { default: { ...baseStandard, prefPerCapita: 2500 }, cities: { tsukuba: { ...baseStandard, prefPerCapita: 2500 } } },
   tochigi:   { default: { ...baseStandard, prefPerCapita: 2200 }, cities: {} },
   gunma:     { default: { ...baseStandard, prefPerCapita: 2200 }, cities: {} },
   saitama: {
