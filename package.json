@@ -15,7 +15,10 @@
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
+    "@nuxt/ui": "^4.6.1",
+    "js-tokens": "9",
     "pinia": "^3.0.4",
+    "tailwindcss": "^4.2.2",
     "vue": "^3.5.31",
     "vue-router": "^5.0.4"
   },

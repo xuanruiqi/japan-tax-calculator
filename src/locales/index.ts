@@ -118,6 +118,8 @@ export interface LocaleStrings {
   wizardCancel: string;
   wizardEdit: string;
   ntaReference: string;
+  idecoLimitTooltipTitle: string;
+  idecoLimitTooltipRows: { label: string; limit: string }[];
 }
 
 export const translations: Record<'en' | 'ja', LocaleStrings> = {
@@ -258,6 +260,14 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     wizardCancel: 'Cancel',
     wizardEdit: 'Edit',
     ntaReference: 'NTA guide',
+    idecoLimitTooltipTitle: 'Monthly contribution limits',
+    idecoLimitTooltipRows: [
+      { label: 'Self-employed / freelancer', limit: '¥68,000' },
+      { label: 'Company employee (no pension plan)', limit: '¥23,000' },
+      { label: 'Company employee (with pension plan)', limit: '¥20,000' },
+      { label: 'Civil servant', limit: '¥20,000' },
+      { label: 'Homemaker (Daisan-go)', limit: '¥23,000' },
+    ],
   },
   ja: {
     title: '手取り計算ツール (日本)',
@@ -390,5 +400,13 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     wizardCancel: 'キャンセル',
     wizardEdit: '編集',
     ntaReference: '国税庁の解説',
+    idecoLimitTooltipTitle: '月額掛金の上限',
+    idecoLimitTooltipRows: [
+      { label: '自営業・フリーランス', limit: '68,000円' },
+      { label: '会社員（企業年金なし）', limit: '23,000円' },
+      { label: '会社員（企業年金あり）', limit: '20,000円' },
+      { label: '公務員', limit: '20,000円' },
+      { label: '専業主婦・主夫（第3号）', limit: '23,000円' },
+    ],
   }
 };

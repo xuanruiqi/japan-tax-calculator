@@ -238,7 +238,10 @@ export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: n
   else if (residentTaxBaseGross > 24500000 && residentTaxBaseGross <= 25000000) actualResidentTaxBasicExemption = 150000;
   else if (residentTaxBaseGross > 25000000) actualResidentTaxBasicExemption = 0;
 
-  const taxableResidentTax = Math.max(0, Math.floor((residentEmploymentIncome - residentSocialInsurance - actualResidentTaxBasicExemption) / 1000) * 1000);
+  // Apply additional deductions (iDeCo etc.) to resident tax base only when using current-year income
+  // (when previousYearGross is provided we have no data on that year's deductions, so skip)
+  const residentExtraDeductions = (previousYearGross !== null && previousYearGross >= 0) ? 0 : extraDeductions;
+  const taxableResidentTax = Math.max(0, Math.floor((residentEmploymentIncome - residentSocialInsurance - actualResidentTaxBasicExemption - residentExtraDeductions) / 1000) * 1000);
 
   // --- Income Tax ---
   let baseIncomeTax = 0;

@@ -1,4 +1,9 @@
-/* Reset and Global Styles */
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+/* Preserve original design system on top of Nuxt UI */
+
+/* Reset */
 * {
   margin: 0;
   padding: 0;
@@ -6,7 +11,7 @@
 }
 
 body {
-  font-family: 'Inter', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: #f7f9fc;
@@ -21,4 +26,269 @@ h1, h2, h3, h4, h5, h6 {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* Hide number spinners to match original */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* ====================================================
+   Nuxt UI Override — Restore Original Design
+   ==================================================== */
+
+/* === UInput wrapper (ring → real border) === */
+div[data-slot="root"]:has(> input[data-slot="base"]) {
+  box-shadow: none !important;
+  border: 1px solid #ddd !important;
+  border-radius: 6px !important;
+  background-color: #fff !important;
+  width: 100%;
+}
+div[data-slot="root"]:has(> input[data-slot="base"]):focus-within {
+  border-color: #111 !important;
+}
+
+/* UInput base element — padding & font-size */
+div[data-slot="root"] > input[data-slot="base"] {
+  box-shadow: none !important;
+  padding: 0.65rem 1rem !important;
+  font-size: 1rem !important;
+  color: #111 !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+}
+/* Shift left padding when ¥ leading slot present */
+div[data-slot="root"]:has([data-slot="leading"]) > input[data-slot="base"] {
+  padding-left: 2.5rem !important;
+}
+/* Push the leading slot (¥) slightly inward */
+div[data-slot="root"] > [data-slot="leading"] {
+  padding-left: 0.6rem !important;
+}
+/* Shift right padding when % trailing slot present */
+div[data-slot="root"]:has([data-slot="trailing"]) > input[data-slot="base"] {
+  padding-right: 2.5rem !important;
+}
+/* Push the trailing slot (%) slightly inward */
+div[data-slot="root"] > [data-slot="trailing"] {
+  padding-right: 0.6rem !important;
+}
+
+/* === Inline name input inside card headers (placed after general rules to win specificity) === */
+div.name-input.name-input[data-slot="root"] {
+  display: inline-flex !important;
+  width: 7rem !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.15) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  vertical-align: middle;
+}
+div.name-input.name-input[data-slot="root"]:focus-within {
+  border-bottom-color: #555 !important;
+}
+div.name-input.name-input[data-slot="root"] > input[data-slot="base"] {
+  padding: 0.1rem 0.3rem !important;
+  font-size: 0.8rem !important;
+  font-weight: 400 !important;
+  color: #555 !important;
+  background: transparent !important;
+}
+
+/* === USelect trigger (use class="styled-select" in template) === */
+button.styled-select[data-slot="base"] {
+  box-shadow: none !important;
+  border: 1px solid #ddd !important;
+  border-radius: 6px !important;
+  background-color: #fff !important;
+  padding: 0.65rem 1rem !important;
+  font-size: 1rem !important;
+  color: #111 !important;
+  width: 100% !important;
+  text-align: left !important;
+}
+button.styled-select[data-slot="base"]:focus,
+button.styled-select[data-slot="base"]:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: #111 !important;
+}
+/* Trailing icon inside styled-select */
+button.styled-select [data-slot="trailingIcon"] {
+  color: #888 !important;
+}
+
+/* === Dropdown / Select / Tooltip content panel === */
+[data-slot="content"] {
+  border-radius: 8px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid #e0e0e0 !important;
+  background-color: #fff !important;
+  color: #111 !important;
+  /* Remove ring */
+  outline: none !important;
+}
+
+/* === UModal panel reset when wrapping the Home Loan Wizard === */
+[data-slot="content"]:has(.wizard-dialog) {
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  max-width: min(520px, calc(100vw - 2rem)) !important;
+  width: 100% !important;
+}
+/* More breathing room per item */
+[data-slot="content"] [data-slot="item"] {
+  padding: 0.6rem 0.9rem !important;
+  font-size: 0.9rem !important;
+  border-radius: 5px !important;
+}
+/* Group padding */
+[data-slot="content"] [data-slot="group"] {
+  padding: 0.35rem !important;
+}
+
+/* === UCard (ring → border, header/body padding) === */
+[data-slot="root"]:has(> [data-slot="header"]),
+[data-slot="root"]:has(> [data-slot="body"]) {
+  box-shadow: none !important;
+  border: 1px solid #e6e6e6 !important;
+  border-radius: 8px !important;
+  background: #fefefe !important;
+  /* Remove divide-y separator */
+  background-image: none !important;
+}
+[data-slot="root"] > [data-slot="header"] {
+  background-color: #f7f7f7 !important;
+  border-bottom: 1px solid #eee !important;
+  padding: 0.6rem 0.9rem !important;
+}
+[data-slot="root"] > [data-slot="body"] {
+  padding: 0.75rem 0.9rem !important;
+}
+
+/* === UButton — lang toggle pill === */
+button.lang-toggle[data-slot="base"] {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid #ddd !important;
+  background: #fff !important;
+  color: #555 !important;
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+  padding: 0.5rem 1.25rem !important;
+}
+button.lang-toggle[data-slot="base"]:hover {
+  background: #fff !important;
+  color: #111 !important;
+  border-color: #111 !important;
+}
+
+/* === UButton — reset (red pill) === */
+button.reset-btn[data-slot="base"] {
+  box-shadow: none !important;
+  border: 1px solid #d32f2f !important;
+  background: transparent !important;
+  color: #d32f2f !important;
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+  padding: 0.5rem 1.25rem !important;
+}
+button.reset-btn[data-slot="base"]:hover {
+  background: #d32f2f !important;
+  color: #fff !important;
+  border-color: #d32f2f !important;
+}
+
+/* === NHI toggle button group === */
+.nhi-toggle-group button.nhi-toggle-btn[data-slot="base"] {
+  border-radius: 0 !important;
+  padding: 0.5rem 1.25rem !important;
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+  box-shadow: none !important;
+  /* Collapse inner border */
+  border: 1px solid #ccc !important;
+  margin-left: -1px;
+}
+.nhi-toggle-group button.nhi-toggle-btn:first-child[data-slot="base"] {
+  border-radius: 6px 0 0 6px !important;
+  margin-left: 0;
+}
+.nhi-toggle-group button.nhi-toggle-btn:last-child[data-slot="base"] {
+  border-radius: 0 6px 6px 0 !important;
+}
+
+/* === UButton — generic outline (add income/deduction, edit) === */
+button.outline-btn[data-slot="base"] {
+  box-shadow: none !important;
+  border: 1px solid #ccc !important;
+  border-radius: 6px !important;
+  background: #fff !important;
+  color: #444 !important;
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+  padding: 0.5rem 1.25rem !important;
+}
+button.outline-btn[data-slot="base"]:hover {
+  border-color: #555 !important;
+  color: #111 !important;
+  background: #fafafa !important;
+}
+
+/* === UButton — show/hide settings ghost === */
+button.settings-toggle-btn[data-slot="base"] {
+  box-shadow: none !important;
+  background: transparent !important;
+  color: #666 !important;
+  border: 1px solid transparent !important;
+  border-radius: 6px !important;
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+  padding: 0.5rem 0.75rem 0.5rem 0 !important;
+}
+button.settings-toggle-btn[data-slot="base"]:hover {
+  background: transparent !important;
+  color: #111 !important;
+}
+
+/* === UButton — solid/primary (dark filled) === */
+button.solid-btn[data-slot="base"] {
+  box-shadow: none !important;
+  border: 1px solid #111 !important;
+  background: #111 !important;
+  color: #fff !important;
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+  padding: 0.5rem 1.25rem !important;
+  border-radius: 6px !important;
+}
+button.solid-btn[data-slot="base"]:hover {
+  background: #333 !important;
+  border-color: #333 !important;
+  color: #fff !important;
+}
+
+/* === UButton — remove (×) ghost error === */
+button.remove-btn[data-slot="base"] {
+  box-shadow: none !important;
+  background: transparent !important;
+  color: #bbb !important;
+  border: 1px solid transparent !important;
+  border-radius: 6px !important;
+}
+button.remove-btn[data-slot="base"]:hover {
+  background: #fff0f0 !important;
+  color: #d32f2f !important;
+  border-color: #fcc !important;
 }

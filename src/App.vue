@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { calculateTaxesAndInsurance, getStandardRemunerationGrade } from './utils/taxCalculation';
 import { PREFECTURES_LIST, KYOKAI_KENPO_RATES, RESIDENT_TAX_RATES, PREFECTURE_NAMES, CITY_NAMES } from './data/taxRates';
 import { translations } from './locales';
@@ -32,8 +32,6 @@ interface IncomeEntry {
 const incomeEntries = ref<IncomeEntry[]>([
   { id: 'salary-default', type: 'salary', name: '', monthlySalary: 300000, annualBonus: 0, revenue: null, expenses: null, joinsSocialInsurance: true },
 ]);
-const showIncomePicker = ref(false);
-
 const addIncomeEntry = (type: IncomeType) => {
   incomeEntries.value.push({
     id: `${type}-${Date.now()}`,
@@ -45,7 +43,6 @@ const addIncomeEntry = (type: IncomeType) => {
     expenses: type === 'business' ? 0 : null,
     joinsSocialInsurance: false,
   });
-  showIncomePicker.value = false;
 };
 
 const removeIncomeEntry = (id: string) => {
@@ -54,6 +51,7 @@ const removeIncomeEntry = (id: string) => {
 
 // Derived values for calculation — primary salary is the first salary entry
 const primarySalaryEntry = computed(() => incomeEntries.value.find(e => e.type === 'salary'));
+const hasSalaryIncome = computed(() => !!primarySalaryEntry.value);
 const monthlySalaryInput = computed(() => primarySalaryEntry.value?.monthlySalary ?? 0);
 const annualBonusInput = computed(() => primarySalaryEntry.value?.annualBonus ?? 0);
 
@@ -74,6 +72,40 @@ const availableCities = computed(() => {
 const prefName = (id: string) => PREFECTURE_NAMES[id]?.[currentLocale.value] ?? id;
 const cityName = (id: string) => CITY_NAMES[id]?.[currentLocale.value] ?? id;
 
+const prefectureItems = computed(() =>
+  PREFECTURES_LIST.map(pref => ({ label: prefName(pref), value: pref }))
+);
+const cityItems = computed(() => [
+  { label: t.value.standardCity, value: 'standard' },
+  ...availableCities.value.map(city => ({ label: cityName(city), value: city })),
+]);
+const ageGroupItems = computed(() => [
+  { label: t.value.ageUnder40, value: 'under40' as const },
+  { label: t.value.age40to64, value: '40to64' as const },
+  { label: t.value.age65over, value: '65over' as const },
+]);
+const kenpoItems = computed(() => [
+  { label: t.value.unionKyokai, value: 'kyokai' as const },
+  { label: t.value.unionIts, value: 'its' as const },
+  { label: t.value.unionTjk, value: 'tjk' as const },
+  { label: t.value.unionOther, value: 'other' as const },
+]);
+const industryItems = computed(() => [
+  { label: t.value.industryGeneral, value: 'general' as const },
+  { label: t.value.industryAgriForestry, value: 'agriForestry' as const },
+  { label: t.value.industryConstruction, value: 'construction' as const },
+]);
+const incomePickerItems = computed(() => [[
+  { label: t.value.salaryIncomeName, onSelect: () => addIncomeEntry('salary') },
+  { label: t.value.businessIncomeName, onSelect: () => addIncomeEntry('business') },
+]]);
+const deductionPickerItems = computed(() => [
+  availableDeductionTypes.value.map(type => ({
+    label: currentLocale.value === 'ja' ? DEDUCTION_DEFS[type].nameJa : DEDUCTION_DEFS[type].nameEn,
+    onSelect: () => addDeduction(type),
+  })),
+]);
+
 type KenpoType = 'kyokai' | 'its' | 'tjk' | 'other';
 const selectedKenpo = ref<KenpoType>('kyokai');
 
@@ -82,20 +114,6 @@ const ageGroup = ref<AgeGroupType>('under40');
 
 const enrolledEmployeeSI = ref<boolean>(true);
 
-const tooltipStyle = ref<Record<string, string>>({});
-const showTooltip = ref(false);
-const onTooltipEnter = (e: MouseEvent) => {
-  const el = e.currentTarget as HTMLElement;
-  const rect = el.getBoundingClientRect();
-  tooltipStyle.value = {
-    top: `${rect.bottom + 8}px`,
-    left: `${Math.min(rect.left, window.innerWidth - 340)}px`,
-  };
-  showTooltip.value = true;
-};
-const onTooltipLeave = () => {
-  showTooltip.value = false;
-};
 
 type NhiMode = 'manual' | 'auto';
 const nhiMode = ref<NhiMode>('manual');
@@ -281,18 +299,14 @@ watch(ageGroup, () => {
   updateKaigoRate();
 });
 
-const showDeductionPicker = ref(false);
-
-const onClickOutsidePicker = () => {
-  showIncomePicker.value = false;
-  showDeductionPicker.value = false;
-};
-
-onMounted(() => document.addEventListener('click', onClickOutsidePicker));
-onUnmounted(() => document.removeEventListener('click', onClickOutsidePicker));
 
 const showHomeLoanWizard = ref(false);
 const editingHomeLoanId = ref<string | null>(null);
+
+// Self-employed (no salary with social insurance) → ¥68,000/month; otherwise employee → ¥23,000/month
+const idecoMonthlyLimit = computed(() =>
+  incomeEntries.value.some(e => e.type === 'salary' && e.joinsSocialInsurance) ? 23000 : 68000
+);
 
 const availableDeductionTypes = computed(() => {
   const used = new Set(deductionEntries.value.map(d => d.type));
@@ -314,7 +328,7 @@ const totalAdditionalDeductions = computed(() => {
   const gross = salaryGross + bizIncome;
   return deductionEntries.value
     .filter(e => !DEDUCTION_DEFS[e.type].isTaxCredit)  // tax-credit types are NOT income deductions
-    .reduce((sum, entry) => sum + calculateDeductionAmount(entry.type, entry.value, gross), 0);
+    .reduce((sum, entry) => sum + calculateDeductionAmount(entry.type, entry.value, gross, idecoMonthlyLimit.value), 0);
 });
 
 const furusatoNetDonation = computed(() => {
@@ -333,7 +347,6 @@ const addDeduction = (type: DeductionType) => {
   if (type === 'home_loan') {
     editingHomeLoanId.value = null;
     showHomeLoanWizard.value = true;
-    showDeductionPicker.value = false;
     return;
   }
   deductionEntries.value.push({
@@ -341,7 +354,6 @@ const addDeduction = (type: DeductionType) => {
     type,
     value: DEDUCTION_DEFS[type].inputIsCount ? 1 : 0,
   });
-  showDeductionPicker.value = false;
 };
 
 const handleHomeLoanConfirm = (params: HomeLoanParams) => {
@@ -381,15 +393,15 @@ const deductionAmountFor = (entry: DeductionEntry) => {
   const bizIncome = incomeEntries.value
     .filter(e => e.type === 'business')
     .reduce((sum, e) => sum + Math.max(0, (Number(e.revenue) || 0) - (Number(e.expenses) || 0)), 0);
-  return calculateDeductionAmount(entry.type, entry.value, salaryGross + bizIncome);
+  return calculateDeductionAmount(entry.type, entry.value, salaryGross + bizIncome, idecoMonthlyLimit.value);
 };
 
 const totalCashCost = computed(() =>
-  deductionEntries.value.reduce((sum, e) => sum + getCashCost(e), 0)
+  deductionEntries.value.reduce((sum, e) => sum + getCashCost(e, idecoMonthlyLimit.value), 0)
 );
 
 const cashCostEntries = computed(() =>
-  deductionEntries.value.filter(e => getCashCost(e) > 0)
+  deductionEntries.value.filter(e => getCashCost(e, idecoMonthlyLimit.value) > 0)
 );
 
 // Compute NHI amount (only relevant when not in employee SI)
@@ -563,7 +575,7 @@ const pieSlices = computed((): PieSlice[] => {
   const locale = currentLocale.value;
 
   const furusatoEntry = deductionEntries.value.find(e => e.type === 'furusato');
-  const furusatoDonation = furusatoEntry ? getCashCost(furusatoEntry) : 0;
+  const furusatoDonation = furusatoEntry ? getCashCost(furusatoEntry, idecoMonthlyLimit.value) : 0;
   const idecoAmount = totalCashCost.value - furusatoDonation;
 
   return [
@@ -622,156 +634,113 @@ const pieSlices = computed((): PieSlice[] => {
 </script>
 
 <template>
+  <UApp>
   <div class="app-container">
-    
-    <button class="top-btn top-right-btn" @click="currentLocale = (currentLocale === 'en' ? 'ja' : 'en')">
+
+    <UButton variant="outline" size="sm" color="neutral" class="lang-toggle fixed top-5 right-6 z-[1000] rounded-full shadow-sm" @click="currentLocale = (currentLocale === 'en' ? 'ja' : 'en')">
       {{ currentLocale === 'en' ? '日本語' : 'English' }}
-    </button>
+    </UButton>
 
     <!-- Input Panel -->
     <div class="panel input-panel">
       <div class="input-section location-section" style="margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid #eaeaea;">
         <div class="section-header">
           <h2>{{ t.locationSettings }}</h2>
-          <button class="top-btn reset-btn" @click="resetState">{{ currentLocale === 'ja' ? 'リセット' : 'Reset' }}</button>
+          <UButton variant="outline" size="sm" color="error" class="reset-btn rounded-full" @click="resetState">{{ currentLocale === 'ja' ? 'リセット' : 'Reset' }}</UButton>
         </div>
 
-        <label class="si-toggle" style="margin-bottom: 1rem;">
-          <span class="switch">
-            <input type="checkbox" v-model="enrolledEmployeeSI" />
-            <span class="switch-slider"></span>
-          </span>
+        <div class="si-toggle" style="margin-bottom: 1rem;">
+          <USwitch v-model="enrolledEmployeeSI" />
           <span>{{ t.enrolledEmployeeSI }}</span>
-        </label>
+        </div>
 
         <div class="input-group">
-          <label for="ageGroup">{{ t.ageGroup }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.ageGroupSub }}</small></label>
-          <div class="input-wrapper">
-            <select id="ageGroup" v-model="ageGroup" class="styled-select">
-              <option value="under40">{{ t.ageUnder40 }}</option>
-              <option value="40to64">{{ t.age40to64 }}</option>
-              <option value="65over">{{ t.age65over }}</option>
-            </select>
-          </div>
+          <label>{{ t.ageGroup }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.ageGroupSub }}</small></label>
+          <USelect v-model="ageGroup" :items="ageGroupItems" class="styled-select" />
         </div>
 
         <div class="input-group" v-if="enrolledEmployeeSI">
-          <label for="employmentPrefecture">{{ t.empPrefecture }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.empPrefectureSub }}</small></label>
-          <div class="input-wrapper">
-            <select id="employmentPrefecture" v-model="employmentPrefecture" class="styled-select">
-              <option v-for="pref in PREFECTURES_LIST" :key="'emp-'+pref" :value="pref">{{ prefName(pref) }}</option>
-            </select>
-          </div>
+          <label>{{ t.empPrefecture }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.empPrefectureSub }}</small></label>
+          <USelect v-model="employmentPrefecture" :items="prefectureItems" class="styled-select" />
         </div>
 
         <div class="input-group">
-          <label for="residencePrefecture">{{ t.resPrefecture }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.resPrefectureSub }}</small></label>
-          <div class="input-wrapper">
-            <select id="residencePrefecture" v-model="residencePrefecture" @change="handleResidencePrefectureChange" class="styled-select">
-              <option v-for="pref in PREFECTURES_LIST" :key="'res-'+pref" :value="pref">{{ prefName(pref) }}</option>
-            </select>
-          </div>
+          <label>{{ t.resPrefecture }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.resPrefectureSub }}</small></label>
+          <USelect v-model="residencePrefecture" :items="prefectureItems" class="styled-select" @update:model-value="handleResidencePrefectureChange" />
         </div>
 
         <div class="input-group" v-if="availableCities.length > 0">
-          <label for="residenceCity">{{ t.municipality }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.municipalitySub }}</small></label>
-          <div class="input-wrapper">
-            <select id="residenceCity" v-model="residenceCity" class="styled-select">
-              <option value="standard">{{ t.standardCity }}</option>
-              <option v-for="city in availableCities" :key="city" :value="city">{{ cityName(city) }}</option>
-            </select>
-          </div>
+          <label>{{ t.municipality }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.municipalitySub }}</small></label>
+          <USelect v-model="residenceCity" :items="cityItems" class="styled-select" />
         </div>
 
         <div v-if="!enrolledEmployeeSI" class="nhi-section">
           <h3 style="margin: 1rem 0 0.5rem; font-size: 0.95rem; font-weight: 600;">{{ t.nationalHealthInsurance }}</h3>
-          <div class="nhi-mode-toggle">
-            <button :class="['nhi-mode-btn', { active: nhiMode === 'manual' }]" @click="nhiMode = 'manual'">{{ t.nhiModeManual }}</button>
-            <button :class="['nhi-mode-btn', { active: nhiMode === 'auto' }]" @click="nhiMode = 'auto'">{{ t.nhiModeAuto }}</button>
-          </div>
+          <UButtonGroup class="nhi-toggle-group">
+            <UButton :variant="nhiMode === 'manual' ? 'solid' : 'outline'" size="sm" class="nhi-toggle-btn" @click="nhiMode = 'manual'">{{ t.nhiModeManual }}</UButton>
+            <UButton :variant="nhiMode === 'auto' ? 'solid' : 'outline'" size="sm" class="nhi-toggle-btn" @click="nhiMode = 'auto'">{{ t.nhiModeAuto }}</UButton>
+          </UButtonGroup>
 
           <template v-if="nhiMode === 'manual'">
             <label class="deduction-input-label" style="margin-top: 0.5rem;">{{ t.nhiTotalAmount }}</label>
-            <div class="input-wrapper has-currency">
-              <span class="currency-symbol">¥</span>
-              <input type="number" v-model.number="nhiManualAmount" min="0" step="1000" class="deduction-input" />
-            </div>
+            <UInput type="number" v-model.number="nhiManualAmount" :min="0" :step="1000">
+              <template #leading><span class="text-base text-muted font-medium">¥</span></template>
+            </UInput>
           </template>
 
           <template v-else>
             <label class="deduction-input-label" style="margin-top: 0.5rem;">{{ t.nhiKintowari }}</label>
-            <div class="input-wrapper has-currency">
-              <span class="currency-symbol">¥</span>
-              <input type="number" v-model.number="nhiKintowari" min="0" step="100" class="deduction-input" />
-            </div>
+            <UInput type="number" v-model.number="nhiKintowari" :min="0" :step="100">
+              <template #leading><span class="text-base text-muted font-medium">¥</span></template>
+            </UInput>
             <label class="deduction-input-label" style="margin-top: 0.5rem;">{{ t.nhiShotokuwari }}</label>
-            <div class="input-wrapper has-percentage">
-              <input type="number" v-model.number="nhiShotokuwariRate" min="0" step="0.01" class="deduction-input" />
-              <span class="percentage-symbol">%</span>
-            </div>
+            <UInput type="number" v-model.number="nhiShotokuwariRate" :min="0" :step="0.01">
+              <template #trailing><span class="text-sm text-muted">%</span></template>
+            </UInput>
           </template>
         </div>
 
         <template v-if="enrolledEmployeeSI">
-          <div class="advanced-options-toggle" @click="showAdvancedOptions = !showAdvancedOptions">
-            <span>{{ showAdvancedOptions ? '▼ ' + t.hideSettings : '▶ ' + t.showSettings }}</span>
-          </div>
+          <UButton variant="ghost" size="sm" class="settings-toggle-btn" :icon="showAdvancedOptions ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'" :label="showAdvancedOptions ? t.hideSettings : t.showSettings" @click="showAdvancedOptions = !showAdvancedOptions" style="margin-top: 0.5rem;" />
 
           <div v-show="showAdvancedOptions" class="advanced-options-panel">
 
             <div class="input-group">
-              <label for="kenpoSelect">{{ t.unionSelect }}</label>
-              <div class="input-wrapper">
-                <select id="kenpoSelect" v-model="selectedKenpo" @change="handleKenpoChange" class="styled-select">
-                  <option value="kyokai">{{ t.unionKyokai }}</option>
-                  <option value="its">{{ t.unionIts }}</option>
-                  <option value="tjk">{{ t.unionTjk }}</option>
-                  <option value="other">{{ t.unionOther }}</option>
-                </select>
-              </div>
+              <label>{{ t.unionSelect }}</label>
+              <USelect v-model="selectedKenpo" :items="kenpoItems" class="styled-select" @update:model-value="handleKenpoChange" />
             </div>
 
             <div class="input-group">
-              <label for="customHealthRate">{{ t.customHealth }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.customHealthSub }}</small></label>
-              <div class="input-wrapper has-percentage">
-                <input id="customHealthRate" type="number" v-model.number="customHealthRate" min="0" step="0.01" />
-                <span class="percentage-symbol">%</span>
-              </div>
+              <label>{{ t.customHealth }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.customHealthSub }}</small></label>
+              <UInput type="number" v-model.number="customHealthRate" :min="0" :step="0.01">
+                <template #trailing><span class="text-sm text-muted">%</span></template>
+              </UInput>
             </div>
 
             <div class="input-group">
-              <label for="customKaigoRate">{{ t.customKaigo }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.customKaigoSub }}</small></label>
-              <div class="input-wrapper has-percentage">
-                <input id="customKaigoRate" type="number" v-model.number="customKaigoRate" min="0" step="0.01" />
-                <span class="percentage-symbol">%</span>
-              </div>
+              <label>{{ t.customKaigo }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.customKaigoSub }}</small></label>
+              <UInput type="number" v-model.number="customKaigoRate" :min="0" :step="0.01">
+                <template #trailing><span class="text-sm text-muted">%</span></template>
+              </UInput>
             </div>
 
             <div class="input-group">
-              <label for="customPensionRate">{{ t.customPension }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.customPensionSub }}</small></label>
-              <div class="input-wrapper has-percentage">
-                <input id="customPensionRate" type="number" v-model.number="customPensionRate" min="0" step="0.01" />
-                <span class="percentage-symbol">%</span>
-              </div>
+              <label>{{ t.customPension }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.customPensionSub }}</small></label>
+              <UInput type="number" v-model.number="customPensionRate" :min="0" :step="0.01">
+                <template #trailing><span class="text-sm text-muted">%</span></template>
+              </UInput>
             </div>
 
             <div class="input-group">
-              <label for="industrySelect">{{ t.employmentInsIndustry }}</label>
-              <div class="input-wrapper">
-                <select id="industrySelect" v-model="selectedIndustry" @change="handleIndustryChange" class="styled-select">
-                  <option value="general">{{ t.industryGeneral }}</option>
-                  <option value="agriForestry">{{ t.industryAgriForestry }}</option>
-                  <option value="construction">{{ t.industryConstruction }}</option>
-                </select>
-              </div>
+              <label>{{ t.employmentInsIndustry }}</label>
+              <USelect v-model="selectedIndustry" :items="industryItems" class="styled-select" @update:model-value="handleIndustryChange" />
             </div>
 
             <div class="input-group">
-              <label for="customEmploymentInsRate">{{ t.customEmploymentIns }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.customEmploymentInsSub }}</small></label>
-              <div class="input-wrapper has-percentage">
-                <input id="customEmploymentInsRate" type="number" v-model.number="customEmploymentInsRate" min="0" step="0.01" />
-                <span class="percentage-symbol">%</span>
-              </div>
+              <label>{{ t.customEmploymentIns }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.customEmploymentInsSub }}</small></label>
+              <UInput type="number" v-model.number="customEmploymentInsRate" :min="0" :step="0.01">
+                <template #trailing><span class="text-sm text-muted">%</span></template>
+              </UInput>
             </div>
 
           </div>
@@ -781,91 +750,86 @@ const pieSlices = computed((): PieSlice[] => {
       <div class="input-section">
         <h2>{{ t.incomeDetails }}</h2>
 
-        <div class="deduction-cards">
-          <div class="deduction-card" v-for="entry in incomeEntries" :key="entry.id">
-            <div class="deduction-card-header">
-              <span class="deduction-card-name">
-                {{ entry.type === 'salary' ? t.salaryIncomeName : t.businessIncomeName }}
-                <small v-if="entry.type === 'salary' && entry === primarySalaryEntry" class="bracket-info" style="margin-left: 0.4rem;">{{ t.primaryJob }}</small>
-                <input style="margin-left: 0.4rem;"
-                  type="text"
-                  v-model="entry.name"
-                  class="income-name-input"
-                  :placeholder="currentLocale === 'ja' ? '名称（任意）' : 'Name (optional)'"
-                />
-              </span>
-              <div class="deduction-card-actions">
-                <button class="remove-btn" @click="removeIncomeEntry(entry.id)" :title="t.removeIncome">✕</button>
+        <div class="card-list">
+          <UCard v-for="entry in incomeEntries" :key="entry.id" :ui="{ header: 'py-2 px-3 bg-gray-50', body: 'p-3' }">
+            <template #header>
+              <div class="flex justify-between items-center">
+                <span class="text-sm font-semibold">
+                  {{ entry.type === 'salary' ? t.salaryIncomeName : t.businessIncomeName }}
+                  <small v-if="entry.type === 'salary' && entry === primarySalaryEntry" class="bracket-info" style="margin-left: 0.4rem;">{{ t.primaryJob }}</small>
+                  <UInput v-model="entry.name" size="xs" variant="ghost" class="name-input inline-block w-28 ml-1" :placeholder="currentLocale === 'ja' ? '名称（任意）' : 'Name (optional)'" />
+                </span>
+                <UButton variant="ghost" size="xs" color="error" class="remove-btn" icon="i-lucide-x" @click="removeIncomeEntry(entry.id)" :title="t.removeIncome" />
               </div>
-            </div>
-            <div class="deduction-card-body">
-              <!-- Salary inputs -->
-              <template v-if="entry.type === 'salary'">
-                <label class="deduction-input-label">{{ t.monthlySalary }}</label>
-                <div class="input-wrapper has-currency">
-                  <span class="currency-symbol">¥</span>
-                  <input type="number" v-model.number="entry.monthlySalary" min="0" step="1000" class="deduction-input" />
-                </div>
-                <label class="deduction-input-label" style="margin-top: 0.5rem;">{{ t.annualBonus }}</label>
-                <div class="input-wrapper has-currency">
-                  <span class="currency-symbol">¥</span>
-                  <input type="number" v-model.number="entry.annualBonus" min="0" step="1000" class="deduction-input" />
-                </div>
-                <label class="si-toggle" style="margin-top: 0.6rem;">
-                  <span class="switch">
-                    <input type="checkbox" v-model="entry.joinsSocialInsurance" />
-                    <span class="switch-slider"></span>
-                  </span>
-                  <span class="si-toggle-label">
-                    {{ t.joinsSocialInsurance }}
-                    <span class="tooltip-trigger" @mouseenter="onTooltipEnter" @mouseleave="onTooltipLeave">?</span>
-                  </span>
-                </label>
-              </template>
-              <!-- Business inputs -->
-              <template v-else>
-                <label class="deduction-input-label">{{ t.businessRevenue }}</label>
-                <div class="input-wrapper has-currency">
-                  <span class="currency-symbol">¥</span>
-                  <input type="number" v-model.number="entry.revenue" min="0" step="1000" class="deduction-input" />
-                </div>
-                <label class="deduction-input-label" style="margin-top: 0.5rem;">{{ t.businessExpenses }}</label>
-                <div class="input-wrapper has-currency">
-                  <span class="currency-symbol">¥</span>
-                  <input type="number" v-model.number="entry.expenses" min="0" step="1000" class="deduction-input" />
-                </div>
-              </template>
-            </div>
-          </div>
+            </template>
+            <!-- Salary inputs -->
+            <template v-if="entry.type === 'salary'">
+              <label class="deduction-input-label">{{ t.monthlySalary }}</label>
+              <UInput type="number" v-model.number="entry.monthlySalary" :min="0" :step="1000">
+                <template #leading><span class="text-base text-muted font-medium">¥</span></template>
+              </UInput>
+              <label class="deduction-input-label" style="margin-top: 0.5rem;">{{ t.annualBonus }}</label>
+              <UInput type="number" v-model.number="entry.annualBonus" :min="0" :step="1000">
+                <template #leading><span class="text-base text-muted font-medium">¥</span></template>
+              </UInput>
+              <div class="si-toggle" style="margin-top: 0.6rem;">
+                <USwitch v-model="entry.joinsSocialInsurance" />
+                <span>
+                  {{ t.joinsSocialInsurance }}
+                  <UTooltip :content="{ side: 'bottom' }" :ui="{ content: 'h-auto bg-white text-gray-900 border border-gray-200 shadow-lg rounded-lg p-0 max-w-xs' }">
+                    <template #content>
+                      <div class="text-xs leading-relaxed" style="padding: 1rem;" v-if="currentLocale === 'ja'">
+                        以下のいずれかに該当する場合、勤務先の社会保険に加入する必要があります。<br/><br/>
+                        <b>① フルタイムの3/4以上</b><br/>
+                        正社員の所定労働時間・日数の3/4以上勤務している場合<br/><br/>
+                        <b>② 以下の5条件をすべて満たす場合</b><br/>
+                        ・週の所定労働時間が20時間以上<br/>
+                        ・所定内賃金が月額8.8万円以上（残業代・交通費・ボーナス除く）<br/>
+                        ・雇用期間が2ヶ月超の見込み<br/>
+                        ・昼間学生でないこと<br/>
+                        ・従業員51人以上の企業であること
+                      </div>
+                      <div class="text-xs leading-relaxed" style="padding: 1rem;" v-else>
+                        You must enroll in employer social insurance if either of the following applies:<br/><br/>
+                        <b>1. Work 3/4+ of full-time hours and days</b><br/><br/>
+                        <b>2. All five conditions are met:</b><br/>
+                        - Weekly working hours: 20+ hours/week<br/>
+                        - Monthly wage: ¥88,000+ (base pay only, excl. overtime, commuting, bonus)<br/>
+                        - Employment period: expected to exceed 2 months<br/>
+                        - Not a full-time student<br/>
+                        - Employer has 51+ employees (pension-insured)
+                      </div>
+                    </template>
+                    <span class="inline-flex items-center justify-center w-4 h-4 text-[0.65rem] font-bold text-gray-500 bg-gray-100 rounded-full cursor-help ml-1">?</span>
+                  </UTooltip>
+                </span>
+              </div>
+            </template>
+            <!-- Business inputs -->
+            <template v-else>
+              <label class="deduction-input-label">{{ t.businessRevenue }}</label>
+              <UInput type="number" v-model.number="entry.revenue" :min="0" :step="1000">
+                <template #leading><span class="text-base text-muted font-medium">¥</span></template>
+              </UInput>
+              <label class="deduction-input-label" style="margin-top: 0.5rem;">{{ t.businessExpenses }}</label>
+              <UInput type="number" v-model.number="entry.expenses" :min="0" :step="1000">
+                <template #leading><span class="text-base text-muted font-medium">¥</span></template>
+              </UInput>
+            </template>
+          </UCard>
         </div>
 
-        <div class="deduction-add-wrapper" style="margin-top: 0.75rem;" @click.stop>
-          <button class="add-deduction-btn" @click="showIncomePicker = !showIncomePicker">{{ t.addIncome }}</button>
-          <div v-if="showIncomePicker" class="deduction-picker">
-            <button class="picker-item" @click="addIncomeEntry('salary')">
-              <span class="picker-name">{{ t.salaryIncomeName }}</span>
-              <small class="picker-desc">{{ t.salaryIncomeDesc }}</small>
-            </button>
-            <button class="picker-item" @click="addIncomeEntry('business')">
-              <span class="picker-name">{{ t.businessIncomeName }}</span>
-              <small class="picker-desc">{{ t.businessIncomeDesc }}</small>
-            </button>
-          </div>
+        <div style="margin-top: 0.75rem;">
+          <UDropdownMenu :items="incomePickerItems">
+            <UButton variant="outline" size="sm" class="outline-btn" :label="t.addIncome" />
+          </UDropdownMenu>
         </div>
 
         <div class="input-group" style="margin-top: 1rem;">
-          <label for="previousYearIncome">{{ t.prevIncome }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.prevIncomeSub }}</small></label>
-          <div class="input-wrapper has-currency">
-            <span class="currency-symbol">¥</span>
-            <input
-              id="previousYearIncome"
-              type="number"
-              v-model.number="previousYearIncomeInput"
-              min="0"
-              step="1000"
-              :placeholder="t.prevIncomePlaceholder"
-            />
-          </div>
+          <label>{{ t.prevIncome }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.prevIncomeSub }}</small></label>
+          <UInput type="number" v-model.number="previousYearIncomeInput" :min="0" :step="1000" :placeholder="t.prevIncomePlaceholder">
+            <template #leading><span class="text-base text-muted font-medium">¥</span></template>
+          </UInput>
         </div>
       </div>
 
@@ -873,40 +837,49 @@ const pieSlices = computed((): PieSlice[] => {
       <div class="input-section deductions-section">
         <div class="deductions-header">
           <h2>{{ t.deductionsSection }}</h2>
-          <div class="deduction-add-wrapper" @click.stop>
-            <button class="add-deduction-btn" @click="showDeductionPicker = !showDeductionPicker">
-              {{ t.addDeduction }}
-            </button>
-            <div class="deduction-picker" v-if="showDeductionPicker && availableDeductionTypes.length > 0">
-              <button
-                v-for="type in availableDeductionTypes"
-                :key="type"
-                class="picker-item"
-                @click="addDeduction(type)"
-              >
-                <span class="picker-name">{{ currentLocale === 'ja' ? DEDUCTION_DEFS[type].nameJa : DEDUCTION_DEFS[type].nameEn }}</span>
-                <small class="picker-desc">{{ currentLocale === 'ja' ? DEDUCTION_DEFS[type].descJa : DEDUCTION_DEFS[type].descEn }}</small>
-              </button>
-            </div>
-          </div>
+          <UDropdownMenu :items="deductionPickerItems">
+            <UButton variant="outline" size="sm" class="outline-btn" :label="t.addDeduction" />
+          </UDropdownMenu>
         </div>
 
         <p class="no-deductions-msg" v-if="deductionEntries.length === 0">{{ t.noDeductions }}</p>
 
-        <div class="deduction-cards">
-          <div class="deduction-card" v-for="entry in deductionEntries" :key="entry.id">
-            <div class="deduction-card-header">
-              <span class="deduction-card-name">
-                {{ currentLocale === 'ja' ? DEDUCTION_DEFS[entry.type].nameJa : DEDUCTION_DEFS[entry.type].nameEn }}
-              </span>
-              <div class="deduction-card-actions">
-                <button v-if="entry.type === 'home_loan'" class="edit-btn" @click="openHomeLoanEdit(entry.id)">{{ t.wizardEdit }}</button>
-                <button class="remove-btn" @click="removeDeduction(entry.id)" :title="t.removeDeduction">✕</button>
+        <div class="card-list">
+          <UCard v-for="entry in deductionEntries" :key="entry.id" :ui="{ header: 'py-2 px-3 bg-gray-50', body: 'p-3' }">
+            <template #header>
+              <div class="flex justify-between items-center">
+                <span class="text-sm font-semibold flex items-center gap-1">
+                  {{ currentLocale === 'ja' ? DEDUCTION_DEFS[entry.type].nameJa : DEDUCTION_DEFS[entry.type].nameEn }}
+                  <UTooltip
+                    v-if="entry.type === 'ideco'"
+                    :content="{ side: 'bottom' }"
+                    :ui="{ content: 'h-auto bg-white text-gray-900 border border-gray-200 shadow-lg rounded-lg p-0' }"
+                  >
+                    <template #content>
+                      <div style="padding: 1rem; min-width: 220px;">
+                        <div style="font-weight: 600; margin-bottom: 0.6rem; font-size: 0.8rem;">{{ t.idecoLimitTooltipTitle }}</div>
+                        <div
+                          v-for="row in t.idecoLimitTooltipRows"
+                          :key="row.label"
+                          style="display: flex; justify-content: space-between; gap: 1.5rem; font-size: 0.78rem; padding: 0.2rem 0; color: #444;"
+                        >
+                          <span>{{ row.label }}</span>
+                          <span style="font-weight: 600; color: #111; white-space: nowrap;">{{ row.limit }}</span>
+                        </div>
+                      </div>
+                    </template>
+                    <span class="inline-flex items-center justify-center w-4 h-4 text-[0.65rem] font-bold text-gray-500 bg-gray-100 rounded-full cursor-help">?</span>
+                  </UTooltip>
+                </span>
+                <div class="flex items-center gap-1">
+                  <UButton v-if="entry.type === 'home_loan'" variant="outline" size="xs" class="outline-btn" :label="t.wizardEdit" @click="openHomeLoanEdit(entry.id)" />
+                  <UButton variant="ghost" size="xs" color="error" class="remove-btn" icon="i-lucide-x" @click="removeDeduction(entry.id)" :title="t.removeDeduction" />
+                </div>
               </div>
-            </div>
+            </template>
 
             <!-- Home loan: show summary instead of input -->
-            <div v-if="entry.type === 'home_loan' && entry.homeLoanParams" class="deduction-card-body home-loan-summary">
+            <template v-if="entry.type === 'home_loan' && entry.homeLoanParams">
               <div class="hl-summary-row">
                 <span>{{ t.homeLoanMoveInYear }}</span>
                 <span>{{ entry.homeLoanParams.moveInYear }}</span>
@@ -923,50 +896,25 @@ const pieSlices = computed((): PieSlice[] => {
                 <span class="deduction-computed-label">{{ t.homeLoanEstimatedCredit }}</span>
                 <span class="deduction-computed-value">{{ formatCurrency(entry.value) }}</span>
               </div>
-              <a
-                v-if="DEDUCTION_DEFS[entry.type].ntaUrl"
-                class="nta-reference-link"
-                :href="DEDUCTION_DEFS[entry.type].ntaUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-              >{{ t.ntaReference }} ↗</a>
-            </div>
+              <a v-if="DEDUCTION_DEFS[entry.type].ntaUrl" class="nta-reference-link" :href="DEDUCTION_DEFS[entry.type].ntaUrl" target="_blank" rel="noopener noreferrer">{{ t.ntaReference }} ↗</a>
+            </template>
 
             <!-- Standard deductions: input field -->
-            <div v-else class="deduction-card-body">
+            <template v-else>
               <label class="deduction-input-label">
                 {{ currentLocale === 'ja' ? DEDUCTION_DEFS[entry.type].inputLabelJa : DEDUCTION_DEFS[entry.type].inputLabelEn }}
               </label>
-              <div class="input-wrapper" :class="DEDUCTION_DEFS[entry.type].inputIsCount ? '' : 'has-currency'">
-                <span class="currency-symbol" v-if="!DEDUCTION_DEFS[entry.type].inputIsCount">¥</span>
-                <input
-                  type="number"
-                  v-model.number="entry.value"
-                  :min="0"
-                  :step="DEDUCTION_DEFS[entry.type].inputIsCount ? 1 : 1000"
-                  class="deduction-input"
-                />
-              </div>
+              <UInput type="number" v-model.number="entry.value" :min="0" :step="DEDUCTION_DEFS[entry.type].inputIsCount ? 1 : 1000">
+                <template #leading v-if="!DEDUCTION_DEFS[entry.type].inputIsCount"><span class="text-base text-muted font-medium">¥</span></template>
+              </UInput>
               <div class="deduction-computed">
                 <span class="deduction-computed-label">{{ t.deductionAmount }}</span>
                 <span class="deduction-computed-value">{{ formatCurrency(deductionAmountFor(entry)) }}</span>
               </div>
-              <a
-                v-if="entry.type === 'furusato'"
-                class="furusato-sim-link"
-                href="https://www.furusato-tax.jp/about/simulation"
-                target="_blank"
-                rel="noopener noreferrer"
-              >{{ currentLocale === 'ja' ? '控除上限額シミュレーション' : 'Calculate your max contribution' }} ↗</a>
-              <a
-                v-if="DEDUCTION_DEFS[entry.type].ntaUrl"
-                class="nta-reference-link"
-                :href="DEDUCTION_DEFS[entry.type].ntaUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-              >{{ t.ntaReference }} ↗</a>
-            </div>
-          </div>
+              <a v-if="entry.type === 'furusato'" class="furusato-sim-link" href="https://www.furusato-tax.jp/about/simulation" target="_blank" rel="noopener noreferrer">{{ currentLocale === 'ja' ? '控除上限額シミュレーション' : 'Calculate your max contribution' }} ↗</a>
+              <a v-if="DEDUCTION_DEFS[entry.type].ntaUrl" class="nta-reference-link" :href="DEDUCTION_DEFS[entry.type].ntaUrl" target="_blank" rel="noopener noreferrer">{{ t.ntaReference }} ↗</a>
+            </template>
+          </UCard>
         </div>
 
         <div class="deduction-total" v-if="deductionEntries.length > 0">
@@ -1141,7 +1089,7 @@ const pieSlices = computed((): PieSlice[] => {
               {{ currentLocale === 'ja' ? DEDUCTION_DEFS[entry.type].nameJa : DEDUCTION_DEFS[entry.type].nameEn }}
               <small class="cash-cost-tag">{{ t.cashCostContributions }}</small>
             </span>
-            <span>- {{ formatCurrency(getCashCost(entry)) }}</span>
+            <span>- {{ formatCurrency(getCashCost(entry, idecoMonthlyLimit)) }}</span>
           </div>
 
           <div class="divider"></div>
@@ -1156,9 +1104,9 @@ const pieSlices = computed((): PieSlice[] => {
         </template>
 
         <div class="estimated-monthly">
-          {{ t.monthlyPay }}: <strong>{{ formatCurrency(results.monthlyNet - totalCashCost / 12) }}</strong>
+          {{ t.monthlyPay }}: <strong>{{ formatCurrency(hasSalaryIncome ? results.monthlyNet - totalCashCost / 12 : (results.netPay - totalCashCost) / 12) }}</strong>
           <br/>
-          <span v-if="results.annualGross - results.monthlyNet*12 > 0">{{ t.bonusPay }}: <strong>{{ formatCurrency(results.bonusNet) }}</strong></span>
+          <span v-if="hasSalaryIncome && results.annualGross - results.monthlyNet*12 > 0">{{ t.bonusPay }}: <strong>{{ formatCurrency(results.bonusNet) }}</strong></span>
           <span v-if="totalCashCost > 0" class="ideco-note">{{ t.disposableIncomeSub }}</span>
         </div>
       </div>
@@ -1185,86 +1133,11 @@ const pieSlices = computed((): PieSlice[] => {
       />
     </div>
   </div>
-  <Teleport to="body">
-    <div v-if="showTooltip" class="tooltip-content" :style="tooltipStyle">
-      <template v-if="currentLocale === 'ja'">
-        以下のいずれかに該当する場合、勤務先の社会保険に加入する必要があります。<br/><br/>
-        <b>① フルタイムの3/4以上</b><br/>
-        正社員の所定労働時間・日数の3/4以上勤務している場合<br/><br/>
-        <b>② 以下の5条件をすべて満たす場合</b><br/>
-        ・週の所定労働時間が20時間以上<br/>
-        ・所定内賃金が月額8.8万円以上（残業代・交通費・ボーナス除く）<br/>
-        ・雇用期間が2ヶ月超の見込み<br/>
-        ・昼間学生でないこと<br/>
-        ・従業員51人以上の企業であること
-      </template>
-      <template v-else>
-        You must enroll in employer social insurance if either of the following applies:<br/><br/>
-        <b>1. Work 3/4+ of full-time hours and days</b><br/><br/>
-        <b>2. All five conditions are met:</b><br/>
-        - Weekly working hours: 20+ hours/week<br/>
-        - Monthly wage: ¥88,000+ (base pay only, excl. overtime, commuting, bonus)<br/>
-        - Employment period: expected to exceed 2 months<br/>
-        - Not a full-time student<br/>
-        - Employer has 51+ employees (pension-insured)
-      </template>
-    </div>
-  </Teleport>
+  </UApp>
 </template>
 
 <style scoped>
-/* Language toggle */
-.top-btn {
-  position: fixed;
-  top: 1.25rem;
-  z-index: 1000;
-  padding: 0.4rem 0.9rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  color: #555;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-}
-
-.top-right-btn {
-  right: 1.5rem;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.section-header h2 {
-  margin-bottom: 0;
-}
-
-.reset-btn {
-  position: static;
-  color: #d32f2f;
-  border-color: #d32f2f;
-}
-
-.top-btn.reset-btn:hover {
-  color: #fff;
-  background: #d32f2f;
-  border-color: #d32f2f;
-}
-
-.top-btn:hover {
-  color: #111;
-  border-color: #111;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-/* Minimalist, clean styling */
+/* Layout */
 .app-container {
   height: 100vh;
   width: 100%;
@@ -1337,6 +1210,17 @@ const pieSlices = computed((): PieSlice[] => {
   text-align: center;
 }
 
+/* Section headers */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.section-header h2 {
+  margin-bottom: 0;
+}
 
 .input-section h2, .results-card h2 {
   font-size: 1.2rem;
@@ -1347,6 +1231,7 @@ const pieSlices = computed((): PieSlice[] => {
   letter-spacing: 0.05em;
 }
 
+/* Form fields */
 .input-group {
   margin-bottom: 1.5rem;
 }
@@ -1363,87 +1248,12 @@ const pieSlices = computed((): PieSlice[] => {
   color: #888 !important;
 }
 
-.input-wrapper {
-  position: relative;
+.si-toggle {
   display: flex;
   align-items: center;
-}
-
-.input-wrapper input {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  font-size: 1rem;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  background: #fff;
-  color: #111;
-  transition: border-color 0.2s;
-}
-
-.input-wrapper input:focus {
-  outline: none;
-  border-color: #111;
-}
-
-/* Number input spinners hiding */
-input[type=number]::-webkit-inner-spin-button, 
-input[type=number]::-webkit-outer-spin-button { 
-  -webkit-appearance: none; 
-  margin: 0; 
-}
-input[type=number] {
-  -moz-appearance: textfield;
-}
-
-.styled-select {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  font-size: 1rem;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  background: #fff;
-  color: #111;
-  transition: border-color 0.2s;
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23333%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
-  background-repeat: no-repeat;
-  background-position: right 1rem top 50%;
-  background-size: 0.65rem auto;
-}
-
-.styled-select:focus {
-  outline: none;
-  border-color: #111;
-}
-
-.currency-symbol {
-  position: absolute;
-  left: 1rem;
-  font-size: 1rem;
-  color: #888;
-}
-
-.percentage-symbol {
-  position: absolute;
-  right: 1rem;
-  font-size: 1rem;
-  color: #888;
-}
-
-.advanced-options-toggle {
-  margin: 1.5rem 0 1rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #666;
-  cursor: pointer;
-  user-select: none;
-  display: inline-flex;
-  align-items: center;
-  transition: color 0.2s;
-}
-
-.advanced-options-toggle:hover {
-  color: #111;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #555;
 }
 
 .advanced-options-panel {
@@ -1452,14 +1262,27 @@ input[type=number] {
   margin-top: 0.5rem;
 }
 
-.has-currency input {
-  padding-left: 2.2rem;
+/* Card list */
+.card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
 }
 
-.has-percentage input {
-  padding-right: 2.2rem;
+.deduction-input-label {
+  display: block;
+  font-size: 0.8rem;
+  color: #666;
+  margin-bottom: 0.35rem;
 }
 
+.no-deductions-msg {
+  font-size: 0.85rem;
+  color: #aaa;
+  margin: 0.5rem 0 1rem;
+}
+
+/* Results panel */
 .results-card {
   background: #fff;
   padding: 0;
@@ -1587,7 +1410,7 @@ input[type=number] {
   color: #1a6b50;
 }
 
-/* ---- Deductions Section ---- */
+/* Deductions section */
 .deductions-section {
   border-top: 1px solid #eaeaea;
   padding-top: 2rem;
@@ -1603,294 +1426,6 @@ input[type=number] {
 
 .deductions-header h2 {
   margin: 0;
-}
-
-.deduction-add-wrapper {
-  position: relative;
-}
-
-.add-deduction-btn {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #444;
-  background: #fff;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  padding: 0.4rem 0.85rem;
-  cursor: pointer;
-  transition: border-color 0.2s, color 0.2s;
-  white-space: nowrap;
-}
-
-.add-deduction-btn:hover {
-  border-color: #111;
-  color: #111;
-}
-
-.deduction-picker {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 6px);
-  z-index: 50;
-  width: 300px;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  box-shadow: 0 6px 24px rgba(0,0,0,0.09);
-  overflow: hidden;
-}
-
-.picker-item {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  width: 100%;
-  background: none;
-  border: none;
-  border-bottom: 1px solid #f0f0f0;
-  padding: 0.75rem 1rem;
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.15s;
-}
-
-.picker-item:last-child {
-  border-bottom: none;
-}
-
-.picker-item:hover {
-  background: #f9f9f9;
-}
-
-.picker-name {
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: #222;
-}
-
-.picker-desc {
-  font-size: 0.75rem;
-  color: #888;
-  margin-top: 0.15rem;
-}
-
-.no-deductions-msg {
-  font-size: 0.85rem;
-  color: #aaa;
-  margin: 0.5rem 0 1rem;
-}
-
-.deduction-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-
-.deduction-card {
-  border: 1px solid #e6e6e6;
-  border-radius: 8px;
-  background: #fefefe;
-}
-
-.deduction-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.6rem 0.9rem;
-  background: #f7f7f7;
-  border-bottom: 1px solid #eee;
-  border-radius: 8px 8px 0 0;
-}
-
-.deduction-card-name {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #222;
-}
-
-.remove-btn {
-  background: none;
-  border: none;
-  color: #bbb;
-  font-size: 0.8rem;
-  cursor: pointer;
-  padding: 0.1rem 0.3rem;
-  border-radius: 4px;
-  transition: color 0.2s, background 0.2s;
-}
-
-.remove-btn:hover {
-  color: #e03131;
-  background: #fff0f0;
-}
-
-.deduction-card-body {
-  padding: 0.75rem 0.9rem;
-}
-
-.deduction-input-label {
-  display: block;
-  font-size: 0.8rem;
-  color: #666;
-  margin-bottom: 0.35rem;
-}
-
-.nhi-mode-toggle {
-  display: flex;
-  gap: 0;
-  margin-top: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.nhi-mode-btn {
-  flex: 1;
-  padding: 0.35rem 0.5rem;
-  font-size: 0.78rem;
-  font-weight: 500;
-  border: none;
-  background: #fff;
-  color: #666;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.nhi-mode-btn:first-child {
-  border-right: 1px solid #ddd;
-}
-
-.nhi-mode-btn.active {
-  background: #3b82f6;
-  color: #fff;
-}
-
-.income-name-input {
-  display: inline-block;
-  width: 7rem;
-  padding: 0.15rem 0.4rem;
-  font-size: 0.82rem;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  color: #333;
-  background: transparent;
-  transition: border-color 0.2s, background 0.2s;
-}
-
-.income-name-input:hover {
-  border-color: #ddd;
-  background: #fafafa;
-}
-
-.income-name-input:focus {
-  outline: none;
-  border-color: #999;
-  background: #fff;
-}
-
-.si-toggle-label {
-  position: relative;
-}
-
-.tooltip-trigger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  margin-left: 0.3rem;
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: #888;
-  background: #eee;
-  border-radius: 50%;
-  cursor: help;
-  vertical-align: middle;
-  position: relative;
-}
-
-.tooltip-content {
-  position: fixed;
-  z-index: 10000;
-  width: 320px;
-  padding: 0.75rem 1rem;
-  font-size: 0.75rem;
-  font-weight: 400;
-  line-height: 1.5;
-  color: #333;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-  white-space: normal;
-  pointer-events: none;
-}
-
-.si-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8rem;
-  color: #555;
-  cursor: pointer;
-}
-
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 34px;
-  height: 18px;
-  flex-shrink: 0;
-}
-
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.switch-slider {
-  position: absolute;
-  inset: 0;
-  background: #ccc;
-  border-radius: 18px;
-  transition: background 0.2s;
-}
-
-.switch-slider::before {
-  content: '';
-  position: absolute;
-  left: 2px;
-  top: 2px;
-  width: 14px;
-  height: 14px;
-  background: #fff;
-  border-radius: 50%;
-  transition: transform 0.2s;
-}
-
-.switch input:checked + .switch-slider {
-  background: #3b82f6;
-}
-
-.switch input:checked + .switch-slider::before {
-  transform: translateX(16px);
-}
-
-.deduction-input {
-  width: 100%;
-  padding: 0.55rem 0.85rem;
-  font-size: 0.95rem;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  background: #fff;
-  color: #111;
-  transition: border-color 0.2s;
-}
-
-.deduction-input:focus {
-  outline: none;
-  border-color: #111;
 }
 
 .deduction-computed {
@@ -1979,31 +1514,6 @@ input[type=number] {
   color: #3b5bdb;
 }
 
-/* Home loan deduction card */
-.deduction-card-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.edit-btn {
-  background: none;
-  border: 1px solid #ddd;
-  color: #666;
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
-  transition: color 0.2s, border-color 0.2s, background 0.2s;
-}
-
-.edit-btn:hover {
-  color: #111;
-  border-color: #999;
-  background: #f9f9f9;
-}
-
 .furusato-sim-link,
 .nta-reference-link {
   display: block;
@@ -2018,10 +1528,6 @@ input[type=number] {
 .nta-reference-link:hover {
   color: #111;
   text-decoration: underline;
-}
-
-.home-loan-summary {
-  padding: 0.6rem 0.9rem !important;
 }
 
 .hl-summary-row {

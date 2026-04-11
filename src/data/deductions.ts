@@ -90,12 +90,12 @@ export const DEDUCTION_DEFS: Record<DeductionType, DeductionMeta> = {
     type: 'ideco',
     nameEn: 'iDeCo / Small Enterprise Mutual Aid',
     nameJa: '小規模企業共済等掛金控除 (iDeCo)',
-    descEn: 'Monthly contribution (max ¥23,000 for company employees)',
-    descJa: '月額掛金 (会社員の上限: 月¥23,000)',
+    descEn: 'Monthly contribution (¥23,000 for employees; ¥68,000 for self-employed)',
+    descJa: '月額掛金 (会社員: 月¥23,000 / 自営業: 月¥68,000)',
     inputLabelEn: 'Monthly Contribution (JPY)',
     inputLabelJa: '月額掛金 (円)',
     inputIsCount: false,
-    maxInput: 23000,
+    maxInput: 68000,
     hasCashCost: true,  // contributions go into a locked account, reducing disposable income
     ntaUrl: 'https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1135.htm',
   },
@@ -179,7 +179,8 @@ export const DEDUCTION_ORDER: DeductionType[] = [
 export function calculateDeductionAmount(
   type: DeductionType,
   value: number,
-  annualGross: number
+  annualGross: number,
+  idecoMonthlyLimit = 23000,
 ): number {
   if (!value || value <= 0) return 0;
 
@@ -208,8 +209,7 @@ export function calculateDeductionAmount(
       return Math.max(0, value - 2000);
 
     case 'ideco':
-      // value is monthly contribution (max ¥23,000 for employees without DB pension)
-      return Math.min(value, 23000) * 12;
+      return Math.min(value, idecoMonthlyLimit) * 12;
 
     case 'spouse': {
       // Spouse income determines deduction; assumes taxpayer gross ≤ ¥9M for full bracket
@@ -246,12 +246,12 @@ export function calculateDeductionAmount(
  * This is separate from the tax deduction amount — it represents money that leaves the user's
  * disposable income even though it is not a "withholding" in the payroll sense.
  */
-export function getCashCost(entry: DeductionEntry): number {
+export function getCashCost(entry: DeductionEntry, idecoMonthlyLimit = 23000): number {
   if (!DEDUCTION_DEFS[entry.type].hasCashCost) return 0;
   if (!entry.value || entry.value <= 0) return 0;
   switch (entry.type) {
     case 'ideco':
-      return Math.min(entry.value, 23000) * 12;
+      return Math.min(entry.value, idecoMonthlyLimit) * 12;
     case 'furusato':
       return entry.value; // full donation amount goes out of pocket; tax credits offset it partially
     default:

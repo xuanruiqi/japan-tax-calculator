@@ -20,7 +20,7 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const step = ref(props.initial ? 4 : 1); // jump to confirm if editing
+const step = ref(props.initial ? 4 : 1);
 const moveInYear = ref(props.initial?.moveInYear ?? 2024);
 const houseType = ref<HomeLoanHouseType>(props.initial?.houseType ?? 'certified');
 const yearEndBalance = ref(props.initial?.yearEndBalance ?? 0);
@@ -28,7 +28,6 @@ const deductionYear = ref(props.initial?.deductionYear ?? 1);
 
 const MOVE_IN_YEARS = [2022, 2023, 2024, 2025];
 
-// When move-in year changes, reset house type if it's no longer available
 watch(moveInYear, () => {
   const available = getAvailableHouseTypes(moveInYear.value);
   if (!available.includes(houseType.value)) {
@@ -37,7 +36,6 @@ watch(moveInYear, () => {
 });
 
 const availableTypes = computed(() => getAvailableHouseTypes(moveInYear.value));
-
 const newTypes = computed(() =>
   HOME_LOAN_HOUSE_TYPES.filter(h => !h.isExisting && availableTypes.value.includes(h.type))
 );
@@ -56,7 +54,6 @@ const currentParams = computed<HomeLoanParams>(() => ({
 }));
 
 const estimatedCredit = computed(() => calculateHomeLoanCredit(currentParams.value));
-
 const exceedsPeriod = computed(() =>
   deductionYear.value > maxDeductionYear.value && maxDeductionYear.value > 0
 );
@@ -70,22 +67,25 @@ const houseTypeName = (type: HomeLoanHouseType) => {
   return props.locale === 'ja' ? def.nameJa : def.nameEn;
 };
 
-
 const nextStep = () => { if (step.value < 4) step.value++; };
 const prevStep = () => { if (step.value > 1) step.value--; };
 const goToStep = (s: number) => { step.value = s; };
 
-const handleConfirm = () => {
-  emit('confirm', { ...currentParams.value });
-};
+const handleConfirm = () => emit('confirm', { ...currentParams.value });
+
+/* ui prop shared by all type-tile buttons so the label is left-aligned & two-line */
+const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' };
 </script>
 
 <template>
-  <div class="wizard-overlay" @click.self="emit('cancel')">
+  <UModal :open="true" @update:open="(val: boolean) => !val && emit('cancel')">
+    <template #content>
     <div class="wizard-dialog">
+
+      <!-- Header -->
       <div class="wizard-header">
         <h3>{{ t.homeLoanWizardTitle }}</h3>
-        <button class="wizard-close" @click="emit('cancel')">&#10005;</button>
+        <UButton variant="ghost" size="xs" class="remove-btn" icon="i-lucide-x" @click="emit('cancel')" />
       </div>
 
       <!-- Step indicators -->
@@ -97,25 +97,27 @@ const handleConfirm = () => {
           :class="{ active: step === i + 1, completed: step > i + 1 }"
           @click="step > i + 1 ? goToStep(i + 1) : undefined"
         >
-          <span class="step-number">{{ step > i + 1 ? '&#10003;' : i + 1 }}</span>
+          <span class="step-number">{{ step > i + 1 ? '✓' : i + 1 }}</span>
           <span class="step-label">{{ label }}</span>
         </div>
       </div>
 
+      <!-- Body -->
       <div class="wizard-body">
+
         <!-- Step 1: Move-in Year -->
         <div v-if="step === 1" class="wizard-step-content">
           <label class="wizard-field-label">{{ t.homeLoanMoveInYear }}</label>
           <div class="year-grid">
-            <button
+            <UButton
               v-for="year in MOVE_IN_YEARS"
               :key="year"
-              class="year-btn"
-              :class="{ selected: moveInYear === year }"
+              :variant="moveInYear === year ? 'solid' : 'outline'"
+              color="neutral"
+              block
+              :class="moveInYear === year ? 'solid-btn' : 'outline-btn'"
               @click="moveInYear = year"
-            >
-              {{ year }}
-            </button>
+            >{{ year }}</UButton>
           </div>
         </div>
 
@@ -125,33 +127,42 @@ const handleConfirm = () => {
 
           <div class="type-group" v-if="newTypes.length > 0">
             <div class="type-group-label">{{ t.homeLoanNewConstruction }}</div>
-            <button
-              v-for="ht in newTypes"
-              :key="ht.type"
-              class="type-btn"
-              :class="{ selected: houseType === ht.type }"
-              @click="houseType = ht.type"
-            >
-              <span class="type-name">{{ locale === 'ja' ? ht.nameJa : ht.nameEn }}</span>
-              <small class="type-desc">{{ locale === 'ja' ? ht.descJa : ht.descEn }}</small>
-            </button>
+            <UButtonGroup orientation="vertical" class="w-full">
+              <UButton
+                v-for="ht in newTypes"
+                :key="ht.type"
+                :variant="houseType === ht.type ? 'solid' : 'outline'"
+                color="neutral"
+                block
+                :class="houseType === ht.type ? 'solid-btn' : 'outline-btn'"
+                :ui="typeTileUi"
+                @click="houseType = ht.type"
+              >
+                <span class="type-name">{{ locale === 'ja' ? ht.nameJa : ht.nameEn }}</span>
+                <small class="type-desc">{{ locale === 'ja' ? ht.descJa : ht.descEn }}</small>
+              </UButton>
+            </UButtonGroup>
           </div>
 
           <div class="type-group" v-if="existingTypes.length > 0">
             <div class="type-group-label">{{ t.homeLoanExistingHousing }}</div>
-            <button
-              v-for="ht in existingTypes"
-              :key="ht.type"
-              class="type-btn"
-              :class="{ selected: houseType === ht.type }"
-              @click="houseType = ht.type"
-            >
-              <span class="type-name">{{ locale === 'ja' ? ht.nameJa : ht.nameEn }}</span>
-              <small class="type-desc">{{ locale === 'ja' ? ht.descJa : ht.descEn }}</small>
-            </button>
+            <UButtonGroup orientation="vertical" class="w-full">
+              <UButton
+                v-for="ht in existingTypes"
+                :key="ht.type"
+                :variant="houseType === ht.type ? 'solid' : 'outline'"
+                color="neutral"
+                block
+                :class="houseType === ht.type ? 'solid-btn' : 'outline-btn'"
+                :ui="typeTileUi"
+                @click="houseType = ht.type"
+              >
+                <span class="type-name">{{ locale === 'ja' ? ht.nameJa : ht.nameEn }}</span>
+                <small class="type-desc">{{ locale === 'ja' ? ht.descJa : ht.descEn }}</small>
+              </UButton>
+            </UButtonGroup>
           </div>
 
-          <!-- Show limits for selected type -->
           <div class="type-info" v-if="limits.maxBalance > 0">
             <div class="info-row">
               <span>{{ t.homeLoanMaxBalance }}</span>
@@ -172,34 +183,20 @@ const handleConfirm = () => {
         <div v-if="step === 3" class="wizard-step-content">
           <div class="wizard-input-group">
             <label class="wizard-field-label">{{ t.homeLoanYearEndBalance }}</label>
-            <div class="wizard-input-wrapper">
-              <span class="wizard-currency">&#165;</span>
-              <input
-                type="number"
-                v-model.number="yearEndBalance"
-                :min="0"
-                :max="limits.maxBalance"
-                step="100000"
-                class="wizard-input"
-              />
-            </div>
+            <UInput type="number" v-model.number="yearEndBalance" :min="0" :max="limits.maxBalance" :step="100000">
+              <template #leading><span class="text-base font-medium text-muted">¥</span></template>
+            </UInput>
             <small class="wizard-hint">{{ t.homeLoanMaxBalance }}: {{ formatJPY(limits.maxBalance) }}</small>
           </div>
 
           <div class="wizard-input-group">
-            <label class="wizard-field-label">
-              {{ t.homeLoanDeductionYear }}
-            </label>
-            <div class="wizard-input-wrapper deduction-year-wrapper">
-              <input
-                type="number"
-                v-model.number="deductionYear"
-                :min="1"
-                :max="maxDeductionYear"
-                step="1"
-                class="wizard-input deduction-year-input"
-              />
-              <span class="wizard-suffix" v-if="locale === 'ja'">{{ t.homeLoanDeductionYearSuffix }}</span>
+            <label class="wizard-field-label">{{ t.homeLoanDeductionYear }}</label>
+            <div class="deduction-year-wrap">
+              <UInput type="number" v-model.number="deductionYear" :min="1" :max="maxDeductionYear" :step="1">
+                <template #trailing v-if="locale === 'ja'">
+                  <span class="text-sm text-muted">{{ t.homeLoanDeductionYearSuffix }}</span>
+                </template>
+              </UInput>
             </div>
             <small class="wizard-hint">{{ t.homeLoanMaxYears }}: {{ maxDeductionYear }}{{ locale === 'ja' ? '年間' : ' years' }}</small>
             <small class="wizard-warning" v-if="exceedsPeriod">{{ t.homeLoanExceedsPeriod }}</small>
@@ -241,40 +238,24 @@ const handleConfirm = () => {
             </div>
           </div>
         </div>
+
       </div>
 
-      <!-- Footer buttons -->
+      <!-- Footer -->
       <div class="wizard-footer">
-        <button v-if="step > 1" class="wizard-btn secondary" @click="prevStep">
-          {{ t.wizardBack }}
-        </button>
-        <button v-if="step === 1" class="wizard-btn secondary" @click="emit('cancel')">
-          {{ t.wizardCancel }}
-        </button>
+        <UButton v-if="step > 1"  variant="outline" color="neutral" class="outline-btn" @click="prevStep">{{ t.wizardBack }}</UButton>
+        <UButton v-if="step === 1" variant="outline" color="neutral" class="outline-btn" @click="emit('cancel')">{{ t.wizardCancel }}</UButton>
         <div class="wizard-footer-spacer"></div>
-        <button v-if="step < 4" class="wizard-btn primary" @click="nextStep">
-          {{ t.wizardNext }}
-        </button>
-        <button v-if="step === 4" class="wizard-btn primary" @click="handleConfirm">
-          {{ t.wizardConfirm }}
-        </button>
+        <UButton v-if="step < 4" variant="solid" color="neutral" class="solid-btn" @click="nextStep">{{ t.wizardNext }}</UButton>
+        <UButton v-if="step === 4" variant="solid" color="neutral" class="solid-btn" @click="handleConfirm">{{ t.wizardConfirm }}</UButton>
       </div>
+
     </div>
-  </div>
+    </template>
+  </UModal>
 </template>
 
 <style scoped>
-.wizard-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 2000;
-  background: rgba(0, 0, 0, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-}
-
 .wizard-dialog {
   background: #fff;
   border-radius: 12px;
@@ -300,22 +281,6 @@ const handleConfirm = () => {
   font-size: 1.1rem;
   font-weight: 600;
   color: #111;
-}
-
-.wizard-close {
-  background: none;
-  border: none;
-  font-size: 1.1rem;
-  color: #999;
-  cursor: pointer;
-  padding: 0.2rem 0.4rem;
-  border-radius: 4px;
-  transition: color 0.2s, background 0.2s;
-}
-
-.wizard-close:hover {
-  color: #333;
-  background: #f5f5f5;
 }
 
 /* Step indicators */
@@ -396,7 +361,7 @@ const handleConfirm = () => {
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .wizard-field-label {
@@ -407,38 +372,17 @@ const handleConfirm = () => {
   margin-bottom: 0.75rem;
 }
 
-/* Year grid */
+/* ── Year grid ──────────────────────────────────── */
 .year-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
-.year-btn {
-  padding: 1rem 0.5rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  background: #fff;
-  color: #444;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
-}
 
-.year-btn:hover {
-  border-color: #999;
-}
-
-.year-btn.selected {
-  border-color: #111;
-  background: #111;
-  color: #fff;
-}
-
-/* House type selection */
+/* ── House type group ───────────────────────────── */
 .type-group {
-  margin-bottom: 1rem;
+  margin-bottom: 1.1rem;
 }
 
 .type-group-label {
@@ -450,39 +394,15 @@ const handleConfirm = () => {
   margin-bottom: 0.5rem;
 }
 
-.type-btn {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  text-align: left;
-  padding: 0.65rem 0.85rem;
-  border: 2px solid #e8e8e8;
-  border-radius: 8px;
-  background: #fff;
-  cursor: pointer;
-  margin-bottom: 0.5rem;
-  transition: border-color 0.15s, background 0.15s;
-}
-
-.type-btn:hover {
-  border-color: #bbb;
-}
-
-.type-btn.selected {
-  border-color: #111;
-  background: #fafafa;
-}
 
 .type-name {
   font-size: 0.88rem;
   font-weight: 600;
-  color: #222;
 }
-
 .type-desc {
   font-size: 0.75rem;
-  color: #888;
-  margin-top: 0.1rem;
+  opacity: 0.75;
+  font-weight: 400;
 }
 
 .type-info {
@@ -506,54 +426,13 @@ const handleConfirm = () => {
   color: #333;
 }
 
-/* Loan details inputs */
+/* ── Loan inputs ─────────────────────────────────── */
 .wizard-input-group {
   margin-bottom: 1.25rem;
 }
 
-.wizard-input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.wizard-currency {
-  position: absolute;
-  left: 0.85rem;
-  font-size: 1rem;
-  color: #888;
-}
-
-.wizard-input {
-  width: 100%;
-  padding: 0.7rem 1rem 0.7rem 2rem;
-  font-size: 1rem;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  background: #fff;
-  color: #111;
-  transition: border-color 0.2s;
-}
-
-.wizard-input:focus {
-  outline: none;
-  border-color: #111;
-}
-
-.deduction-year-wrapper {
+.deduction-year-wrap {
   max-width: 160px;
-}
-
-.deduction-year-input {
-  padding-left: 1rem !important;
-  text-align: center;
-}
-
-.wizard-suffix {
-  position: absolute;
-  right: 0.85rem;
-  font-size: 0.9rem;
-  color: #888;
 }
 
 .wizard-hint {
@@ -570,7 +449,7 @@ const handleConfirm = () => {
   margin-top: 0.3rem;
 }
 
-/* Number input spinners hiding */
+/* Hide number spinners */
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button {
   -webkit-appearance: none;
@@ -598,7 +477,7 @@ input[type=number] {
   color: #3b5bdb;
 }
 
-/* Confirmation */
+/* ── Confirmation ────────────────────────────────── */
 .confirm-summary {
   background: #f8f9fa;
   border-radius: 8px;
@@ -634,7 +513,7 @@ input[type=number] {
   margin: 0.5rem 0;
 }
 
-/* Footer */
+/* ── Footer ──────────────────────────────────────── */
 .wizard-footer {
   display: flex;
   align-items: center;
@@ -647,33 +526,4 @@ input[type=number] {
   flex: 1;
 }
 
-.wizard-btn {
-  padding: 0.55rem 1.25rem;
-  font-size: 0.88rem;
-  font-weight: 600;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-
-.wizard-btn.primary {
-  background: #111;
-  color: #fff;
-  border: 1px solid #111;
-}
-
-.wizard-btn.primary:hover {
-  background: #333;
-}
-
-.wizard-btn.secondary {
-  background: #fff;
-  color: #555;
-  border: 1px solid #ddd;
-}
-
-.wizard-btn.secondary:hover {
-  border-color: #999;
-  color: #111;
-}
 </style>

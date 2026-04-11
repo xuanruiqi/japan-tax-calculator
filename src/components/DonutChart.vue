@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 export interface PieSlice {
   label: string;
@@ -53,6 +53,32 @@ interface Segment {
   midY: number;
 }
 
+interface TooltipState {
+  visible: boolean;
+  x: number;
+  y: number;
+  label: string;
+  value: number;
+  pct: number;
+  color: string;
+}
+
+const tooltip = ref<TooltipState>({ visible: false, x: 0, y: 0, label: '', value: 0, pct: 0, color: '' });
+
+function onSegmentEnter(seg: Segment, e: MouseEvent) {
+  tooltip.value = { visible: true, x: e.clientX, y: e.clientY, label: seg.label, value: seg.value, pct: seg.pct, color: seg.color };
+}
+function onSegmentMove(e: MouseEvent) {
+  tooltip.value.x = e.clientX;
+  tooltip.value.y = e.clientY;
+}
+function onSegmentLeave() {
+  tooltip.value.visible = false;
+}
+
+const formatValue = (v: number) =>
+  new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 }).format(v);
+
 const segments = computed((): Segment[] => {
   if (!total.value) return [];
   let cursor = 0;
@@ -86,6 +112,9 @@ const segments = computed((): Segment[] => {
         :d="seg.path"
         :fill="seg.color"
         class="donut-segment"
+        @mouseenter="onSegmentEnter(seg, $event)"
+        @mousemove="onSegmentMove($event)"
+        @mouseleave="onSegmentLeave()"
       />
       <!-- Center label -->
       <text :x="CX" :y="CY - 10" class="center-label" text-anchor="middle" dominant-baseline="middle">
@@ -105,6 +134,20 @@ const segments = computed((): Segment[] => {
       </li>
     </ul>
   </div>
+
+  <!-- Floating tooltip -->
+  <Teleport to="body">
+    <div
+      v-if="tooltip.visible"
+      class="donut-tooltip"
+      :style="{ top: tooltip.y + 16 + 'px', left: tooltip.x + 12 + 'px' }"
+    >
+      <span class="donut-tooltip-swatch" :style="{ background: tooltip.color }"></span>
+      <span class="donut-tooltip-label">{{ tooltip.label }}</span>
+      <span class="donut-tooltip-value">{{ formatValue(tooltip.value) }}</span>
+      <span class="donut-tooltip-pct">{{ tooltip.pct }}%</span>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -179,5 +222,46 @@ const segments = computed((): Segment[] => {
   color: #111;
   min-width: 3.5rem;
   text-align: right;
+}
+
+/* Floating segment tooltip — teleported to body, so not scoped */
+</style>
+
+<style>
+.donut-tooltip {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  padding: 0.45rem 0.75rem;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  color: #111;
+}
+
+.donut-tooltip-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.donut-tooltip-label {
+  color: #555;
+}
+
+.donut-tooltip-value {
+  font-weight: 600;
+  color: #111;
+}
+
+.donut-tooltip-pct {
+  color: #888;
 }
 </style>
