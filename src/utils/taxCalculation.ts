@@ -199,16 +199,27 @@ export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: n
   const employmentIncome = Math.max(0, totalSalaryGross - employmentIncomeDeduction);
   const totalIncome = employmentIncome + businessIncome;
 
-  // --- Basic Exemption ---
-  let incomeTaxBasicExemption = 480000;
-  if (totalIncome > 24000000 && totalIncome <= 24500000) incomeTaxBasicExemption = 320000;
-  else if (totalIncome > 24500000 && totalIncome <= 25000000) incomeTaxBasicExemption = 160000;
-  else if (totalIncome > 25000000) incomeTaxBasicExemption = 0;
+  // --- Basic Exemption (令和7年分以降 / FY2025+) ---
+  // Source: https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1199.htm
+  let incomeTaxBasicExemption: number;
+  if      (totalIncome <= 1320000)  incomeTaxBasicExemption = 950000;
+  else if (totalIncome <= 3360000)  incomeTaxBasicExemption = 880000;
+  else if (totalIncome <= 4890000)  incomeTaxBasicExemption = 680000;
+  else if (totalIncome <= 6550000)  incomeTaxBasicExemption = 630000;
+  else if (totalIncome <= 23500000) incomeTaxBasicExemption = 580000;
+  else if (totalIncome <= 24000000) incomeTaxBasicExemption = 480000;
+  else if (totalIncome <= 24500000) incomeTaxBasicExemption = 320000;
+  else if (totalIncome <= 25000000) incomeTaxBasicExemption = 160000;
+  else                              incomeTaxBasicExemption = 0;
 
-  let residentTaxBasicExemption = 430000;
-  if (totalIncome > 24000000 && totalIncome <= 24500000) residentTaxBasicExemption = 290000;
-  else if (totalIncome > 24500000 && totalIncome <= 25000000) residentTaxBasicExemption = 150000;
-  else if (totalIncome > 25000000) residentTaxBasicExemption = 0;
+  // Resident tax basic exemption increased from ¥430,000 → ¥480,000 (FY2025+)
+  // Phase-out starts at ¥23.5M (was ¥24M)
+  let residentTaxBasicExemption: number;
+  if      (totalIncome <= 23500000) residentTaxBasicExemption = 480000;
+  else if (totalIncome <= 24000000) residentTaxBasicExemption = 380000;
+  else if (totalIncome <= 24500000) residentTaxBasicExemption = 290000;
+  else if (totalIncome <= 25000000) residentTaxBasicExemption = 150000;
+  else                              residentTaxBasicExemption = 0;
 
   // --- Taxable Income ---
   const extraDeductions = options.additionalDeductions ?? 0;
@@ -233,10 +244,12 @@ export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: n
     residentSocialInsurance = Math.floor(previousYearGross * 0.1414);
   }
 
-  let actualResidentTaxBasicExemption = 430000;
-  if (residentTaxBaseGross > 24000000 && residentTaxBaseGross <= 24500000) actualResidentTaxBasicExemption = 290000;
-  else if (residentTaxBaseGross > 24500000 && residentTaxBaseGross <= 25000000) actualResidentTaxBasicExemption = 150000;
-  else if (residentTaxBaseGross > 25000000) actualResidentTaxBasicExemption = 0;
+  let actualResidentTaxBasicExemption: number;
+  if      (residentTaxBaseGross <= 23500000) actualResidentTaxBasicExemption = 480000;
+  else if (residentTaxBaseGross <= 24000000) actualResidentTaxBasicExemption = 380000;
+  else if (residentTaxBaseGross <= 24500000) actualResidentTaxBasicExemption = 290000;
+  else if (residentTaxBaseGross <= 25000000) actualResidentTaxBasicExemption = 150000;
+  else                                       actualResidentTaxBasicExemption = 0;
 
   // Apply additional deductions (iDeCo etc.) to resident tax base only when using current-year income
   // (when previousYearGross is provided we have no data on that year's deductions, so skip)

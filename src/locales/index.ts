@@ -7,18 +7,13 @@ export interface LocaleStrings {
   monthlyPay: string;
   bonusPay: string;
   empPrefecture: string;
-  empPrefectureSub: string;
   resPrefecture: string;
-  resPrefectureSub: string;
   municipality: string;
-  municipalitySub: string;
   standardCity: string;
   ageGroup: string;
-  ageGroupSub: string;
   monthlySalary: string;
   annualBonus: string;
   prevIncome: string;
-  prevIncomeSub: string;
   prevIncomePlaceholder: string;
   addIncome: string;
   salaryIncomeName: string;
@@ -35,6 +30,7 @@ export interface LocaleStrings {
   nationalHealthInsurance: string;
   nhiModeManual: string;
   nhiModeAuto: string;
+  nhiModeCity: string;
   nhiTotalAmount: string;
   nhiKintowari: string;
   nhiShotokuwari: string;
@@ -49,17 +45,13 @@ export interface LocaleStrings {
   unionTjk: string;
   unionOther: string;
   customHealth: string;
-  customHealthSub: string;
   customKaigo: string;
-  customKaigoSub: string;
   customPension: string;
-  customPensionSub: string;
   employmentInsIndustry: string;
   industryGeneral: string;
   industryAgriForestry: string;
   industryConstruction: string;
   customEmploymentIns: string;
-  customEmploymentInsSub: string;
   grossIncome: string;
   employmentIncomeDeduction: string;
   employmentIncome: string;
@@ -70,7 +62,6 @@ export interface LocaleStrings {
   employmentIns: string;
   incomeTax: string;
   taxableIncome: string;
-  taxableIncomeSub: string;
   marginalRateLabel: string;
   marginalRateSurtax: string;
   residentTax: string;
@@ -136,20 +127,15 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     
     // Location Settings
     empPrefecture: 'Prefecture of Employment',
-    empPrefectureSub: '(Affects Kyokai Kenpo Rate)',
     resPrefecture: 'Prefecture of Residence',
-    resPrefectureSub: '(Affects Resident Tax)',
     municipality: 'Municipality',
-    municipalitySub: '(Only shown if exceptions exist)',
     standardCity: 'Standard / Other',
     
     // Income Details
     ageGroup: 'Age Group',
-    ageGroupSub: '(Affects Nursing Care Insurance)',
     monthlySalary: 'Monthly Salary (JPY)',
     annualBonus: 'Annual Bonus (JPY)',
     prevIncome: 'Previous Year Gross Income (JPY)',
-    prevIncomeSub: '(Optional: For accurate Resident Tax)',
     prevIncomePlaceholder: 'Same as current if empty',
     addIncome: '+ Add Income',
     salaryIncomeName: 'Salaried Income',
@@ -166,6 +152,7 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     nationalHealthInsurance: 'National Health Insurance',
     nhiModeManual: 'Enter total amount',
     nhiModeAuto: 'Calculate from rates',
+    nhiModeCity: 'Auto-calculate',
     nhiTotalAmount: 'Annual NHI Amount (JPY)',
     nhiKintowari: 'Per-capita levy (均等割 JPY/year)',
     nhiShotokuwari: 'Income-based rate (所得割 %)',
@@ -185,17 +172,13 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     unionOther: 'Other Union (Custom Rate)',
     
     customHealth: 'Health Insurance Rate (%)',
-    customHealthSub: '(Employee Share - Default: 4.99%)',
     customKaigo: 'Nursing Care Insurance Rate (%)',
-    customKaigoSub: '(Employee Share)',
     customPension: 'Pension Rate (%)',
-    customPensionSub: '(Employee Share - Default: 9.15%)',
     employmentInsIndustry: 'Industry Type (Employment Insurance)',
     industryGeneral: 'General - 0.6%',
     industryAgriForestry: 'Agriculture, Forestry, Fishery & Sake Brewing - 0.7%',
     industryConstruction: 'Construction - 0.7%',
     customEmploymentIns: 'Employment Insurance Rate (%)',
-    customEmploymentInsSub: '(Employee Share - Default: 0.6%)',
     
     // Breakdown
     grossIncome: 'Gross Income',
@@ -208,7 +191,6 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     employmentIns: 'Employment Insurance',
     incomeTax: 'Income Tax',
     taxableIncome: 'Taxable Income',
-    taxableIncomeSub: 'After all deductions',
     marginalRateLabel: 'Marginal Rate',
     marginalRateSurtax: 'incl. 2.1% surtax',
     residentTax: 'Resident Tax',
@@ -280,19 +262,14 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     bonusPay: 'ボーナスの手取り',
     
     empPrefecture: '勤務地',
-    empPrefectureSub: '(協会けんぽの保険料率に影響)',
     resPrefecture: '居住する都道府県',
-    resPrefectureSub: '(住民税に影響)',
     municipality: '市区町村',
-    municipalitySub: '(例外的な税率が存在する場合のみ表示)',
     standardCity: 'その他市区町村 (標準)',
     
     ageGroup: '年齢',
-    ageGroupSub: '(介護保険の有無に影響)',
     monthlySalary: '月額給与 (円)',
     annualBonus: '年間ボーナス (円)',
     prevIncome: '前年の総収入 (円)',
-    prevIncomeSub: '(任意: 住民税の正確な計算に必要)',
     prevIncomePlaceholder: '空欄の場合は今年の収入と同額とみなす',
     addIncome: '+ 所得を追加',
     salaryIncomeName: '給与所得',
@@ -309,6 +286,7 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     nationalHealthInsurance: '国民健康保険',
     nhiModeManual: '金額を直接入力',
     nhiModeAuto: '料率から計算',
+    nhiModeCity: '自動計算',
     nhiTotalAmount: '年間国保額 (円)',
     nhiKintowari: '均等割額 (円/年)',
     nhiShotokuwari: '所得割率 (%)',
@@ -326,17 +304,13 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     unionOther: 'その他の組合 (カスタム料率)',
     
     customHealth: '健康保険料率 (%)',
-    customHealthSub: '(従業員負担分 - デフォルト: 4.99%)',
     customKaigo: '介護保険料率 (%)',
-    customKaigoSub: '(従業員負担分)',
     customPension: '厚生年金料率 (%)',
-    customPensionSub: '(従業員負担分 - デフォルト: 9.15%)',
     employmentInsIndustry: '事業の種類（雇用保険）',
     industryGeneral: '一般の事業 - 0.6%',
     industryAgriForestry: '農林水産・清酒製造業 - 0.7%',
     industryConstruction: '建設業 - 0.7%',
     customEmploymentIns: '雇用保険料率 (%)',
-    customEmploymentInsSub: '(従業員負担分 - デフォルト: 0.6%)',
     
     grossIncome: '額面給与',
     employmentIncomeDeduction: '給与所得控除',
@@ -348,7 +322,6 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     employmentIns: '雇用保険',
     incomeTax: '所得税',
     taxableIncome: '課税所得額',
-    taxableIncomeSub: '各種控除後',
     marginalRateLabel: '限界税率',
     marginalRateSurtax: '復興税込み',
     residentTax: '住民税',

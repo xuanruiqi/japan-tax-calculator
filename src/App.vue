@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { calculateTaxesAndInsurance, getStandardRemunerationGrade } from './utils/taxCalculation';
+import { computeNhiBase, calculateMunicipalityNhi, isMunicipalitySupported, type NhiBreakdown } from './utils/nhiCalculation';
 import { PREFECTURES_LIST, KYOKAI_KENPO_RATES, RESIDENT_TAX_RATES, PREFECTURE_NAMES, CITY_NAMES } from './data/taxRates';
 import { translations } from './locales';
 import {
@@ -115,7 +116,7 @@ const ageGroup = ref<AgeGroupType>('under40');
 const enrolledEmployeeSI = ref<boolean>(true);
 
 
-type NhiMode = 'manual' | 'auto';
+type NhiMode = 'manual' | 'auto' | 'municipality';
 const nhiMode = ref<NhiMode>('manual');
 const nhiManualAmount = ref<number | null>(null);
 const nhiKintowari = ref<number | null>(null);
@@ -404,31 +405,43 @@ const cashCostEntries = computed(() =>
   deductionEntries.value.filter(e => getCashCost(e, idecoMonthlyLimit.value) > 0)
 );
 
+// Resolve income entries into the two inputs computeNhiBase needs
+function getNhiIncomes(): { salaryGross: number; bizIncome: number } {
+  const salaryGross = incomeEntries.value
+    .filter(e => e.type === 'salary')
+    .reduce((sum, e) => sum + (Number(e.monthlySalary) || 0) * 12 + (Number(e.annualBonus) || 0), 0);
+  const bizIncome = incomeEntries.value
+    .filter(e => e.type === 'business')
+    .reduce((sum, e) => sum + Math.max(0, (Number(e.revenue) || 0) - (Number(e.expenses) || 0)), 0);
+  return { salaryGross, bizIncome };
+}
+
+const municipalityAutoAvailable = computed(() => isMunicipalitySupported(residenceCity.value));
+
+// If the city changes and municipality mode is no longer supported, fall back to manual
+watch(municipalityAutoAvailable, (available) => {
+  if (!available && nhiMode.value === 'municipality') nhiMode.value = 'manual';
+});
+
+// Municipality NHI breakdown (null when city not supported)
+const municipalityNhiBreakdown = computed((): NhiBreakdown | null => {
+  const { salaryGross, bizIncome } = getNhiIncomes();
+  const base = computeNhiBase(salaryGross, bizIncome);
+  return calculateMunicipalityNhi(residenceCity.value, base, ageGroup.value);
+});
+
 // Compute NHI amount (only relevant when not in employee SI)
 const nhiAmount = computed(() => {
   if (enrolledEmployeeSI.value) return 0;
   if (nhiMode.value === 'manual') {
     return Math.max(0, Number(nhiManualAmount.value) || 0);
   }
+  if (nhiMode.value === 'municipality') {
+    return municipalityNhiBreakdown.value?.total ?? 0;
+  }
   // Auto mode: 所得割 + 均等割
-  // NHI base = max(0, total income - 基礎控除 430,000)
-  const salaryGross = incomeEntries.value
-    .filter(e => e.type === 'salary')
-    .reduce((sum, e) => sum + (Number(e.monthlySalary) || 0) * 12 + (Number(e.annualBonus) || 0), 0);
-  // Compute employment income deduction for NHI base
-  let empDeduction = 0;
-  if (salaryGross <= 1625000) empDeduction = Math.min(salaryGross, 550000);
-  else if (salaryGross <= 1800000) empDeduction = salaryGross * 0.4 - 100000;
-  else if (salaryGross <= 3600000) empDeduction = salaryGross * 0.3 + 80000;
-  else if (salaryGross <= 6600000) empDeduction = salaryGross * 0.2 + 440000;
-  else if (salaryGross <= 8500000) empDeduction = salaryGross * 0.1 + 1100000;
-  else empDeduction = 1950000;
-  const empIncome = Math.max(0, salaryGross - empDeduction);
-  const bizIncome = incomeEntries.value
-    .filter(e => e.type === 'business')
-    .reduce((sum, e) => sum + Math.max(0, (Number(e.revenue) || 0) - (Number(e.expenses) || 0)), 0);
-  const totalIncome = empIncome + bizIncome;
-  const nhiBase = Math.max(0, totalIncome - 430000);
+  const { salaryGross, bizIncome } = getNhiIncomes();
+  const nhiBase = computeNhiBase(salaryGross, bizIncome);
   const shotokuwari = Math.floor(nhiBase * (Number(nhiShotokuwariRate.value) || 0) / 100);
   const kintowari = Number(nhiKintowari.value) || 0;
   return shotokuwari + kintowari;
@@ -655,22 +668,22 @@ const pieSlices = computed((): PieSlice[] => {
         </div>
 
         <div class="input-group">
-          <label>{{ t.ageGroup }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.ageGroupSub }}</small></label>
+          <label>{{ t.ageGroup }}</label>
           <USelect v-model="ageGroup" :items="ageGroupItems" class="styled-select" />
         </div>
 
         <div class="input-group" v-if="enrolledEmployeeSI">
-          <label>{{ t.empPrefecture }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.empPrefectureSub }}</small></label>
+          <label>{{ t.empPrefecture }}</label>
           <USelect v-model="employmentPrefecture" :items="prefectureItems" class="styled-select" />
         </div>
 
         <div class="input-group">
-          <label>{{ t.resPrefecture }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.resPrefectureSub }}</small></label>
+          <label>{{ t.resPrefecture }}</label>
           <USelect v-model="residencePrefecture" :items="prefectureItems" class="styled-select" @update:model-value="handleResidencePrefectureChange" />
         </div>
 
         <div class="input-group" v-if="availableCities.length > 0">
-          <label>{{ t.municipality }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.municipalitySub }}</small></label>
+          <label>{{ t.municipality }}</label>
           <USelect v-model="residenceCity" :items="cityItems" class="styled-select" />
         </div>
 
@@ -679,6 +692,7 @@ const pieSlices = computed((): PieSlice[] => {
           <UButtonGroup class="nhi-toggle-group">
             <UButton :variant="nhiMode === 'manual' ? 'solid' : 'outline'" size="sm" class="nhi-toggle-btn" @click="nhiMode = 'manual'">{{ t.nhiModeManual }}</UButton>
             <UButton :variant="nhiMode === 'auto' ? 'solid' : 'outline'" size="sm" class="nhi-toggle-btn" @click="nhiMode = 'auto'">{{ t.nhiModeAuto }}</UButton>
+            <UButton :variant="nhiMode === 'municipality' ? 'solid' : 'outline'" size="sm" class="nhi-toggle-btn" :disabled="!municipalityAutoAvailable" @click="nhiMode = 'municipality'">{{ t.nhiModeCity }}</UButton>
           </UButtonGroup>
 
           <template v-if="nhiMode === 'manual'">
@@ -688,7 +702,7 @@ const pieSlices = computed((): PieSlice[] => {
             </UInput>
           </template>
 
-          <template v-else>
+          <template v-else-if="nhiMode === 'auto'">
             <label class="deduction-input-label" style="margin-top: 0.5rem;">{{ t.nhiKintowari }}</label>
             <UInput type="number" v-model.number="nhiKintowari" :min="0" :step="100">
               <template #leading><span class="text-base text-muted font-medium">¥</span></template>
@@ -697,6 +711,31 @@ const pieSlices = computed((): PieSlice[] => {
             <UInput type="number" v-model.number="nhiShotokuwariRate" :min="0" :step="0.01">
               <template #trailing><span class="text-sm text-muted">%</span></template>
             </UInput>
+          </template>
+
+          <template v-else-if="nhiMode === 'municipality' && municipalityNhiBreakdown">
+            <div class="nhi-municipality-breakdown">
+              <div class="nhi-breakdown-row">
+                <span>{{ currentLocale === 'ja' ? '医療分' : 'Medical' }}</span>
+                <span>¥{{ municipalityNhiBreakdown.medical.toLocaleString() }}</span>
+              </div>
+              <div class="nhi-breakdown-row">
+                <span>{{ currentLocale === 'ja' ? '支援金分' : 'Support' }}</span>
+                <span>¥{{ municipalityNhiBreakdown.support.toLocaleString() }}</span>
+              </div>
+              <div class="nhi-breakdown-row" v-if="ageGroup === '40to64'">
+                <span>{{ currentLocale === 'ja' ? '介護分' : 'Long-term Care' }}</span>
+                <span>¥{{ municipalityNhiBreakdown.kaigo.toLocaleString() }}</span>
+              </div>
+              <div class="nhi-breakdown-row">
+                <span>{{ currentLocale === 'ja' ? '子ども分' : 'Child Support' }}</span>
+                <span>¥{{ municipalityNhiBreakdown.kodomo.toLocaleString() }}</span>
+              </div>
+              <div class="nhi-breakdown-row nhi-breakdown-total">
+                <span>{{ currentLocale === 'ja' ? '合計' : 'Total' }}</span>
+                <span>¥{{ municipalityNhiBreakdown.total.toLocaleString() }}</span>
+              </div>
+            </div>
           </template>
         </div>
 
@@ -711,21 +750,21 @@ const pieSlices = computed((): PieSlice[] => {
             </div>
 
             <div class="input-group">
-              <label>{{ t.customHealth }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.customHealthSub }}</small></label>
+              <label>{{ t.customHealth }}</label>
               <UInput type="number" v-model.number="customHealthRate" :min="0" :step="0.01">
                 <template #trailing><span class="text-sm text-muted">%</span></template>
               </UInput>
             </div>
 
             <div class="input-group">
-              <label>{{ t.customKaigo }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.customKaigoSub }}</small></label>
+              <label>{{ t.customKaigo }}</label>
               <UInput type="number" v-model.number="customKaigoRate" :min="0" :step="0.01">
                 <template #trailing><span class="text-sm text-muted">%</span></template>
               </UInput>
             </div>
 
             <div class="input-group">
-              <label>{{ t.customPension }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.customPensionSub }}</small></label>
+              <label>{{ t.customPension }}</label>
               <UInput type="number" v-model.number="customPensionRate" :min="0" :step="0.01">
                 <template #trailing><span class="text-sm text-muted">%</span></template>
               </UInput>
@@ -737,7 +776,7 @@ const pieSlices = computed((): PieSlice[] => {
             </div>
 
             <div class="input-group">
-              <label>{{ t.customEmploymentIns }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.customEmploymentInsSub }}</small></label>
+              <label>{{ t.customEmploymentIns }}</label>
               <UInput type="number" v-model.number="customEmploymentInsRate" :min="0" :step="0.01">
                 <template #trailing><span class="text-sm text-muted">%</span></template>
               </UInput>
@@ -826,7 +865,7 @@ const pieSlices = computed((): PieSlice[] => {
         </div>
 
         <div class="input-group" style="margin-top: 1rem;">
-          <label>{{ t.prevIncome }} <br/><small style="font-weight: normal; font-size: 0.85em; color: #777;">{{ t.prevIncomeSub }}</small></label>
+          <label>{{ t.prevIncome }}</label>
           <UInput type="number" v-model.number="previousYearIncomeInput" :min="0" :step="1000" :placeholder="t.prevIncomePlaceholder">
             <template #leading><span class="text-base text-muted font-medium">¥</span></template>
           </UInput>
@@ -1021,7 +1060,6 @@ const pieSlices = computed((): PieSlice[] => {
         <div class="result-row taxable-income-row">
           <span>
             {{ t.taxableIncome }}
-            <small class="taxable-income-sub">{{ t.taxableIncomeSub }}</small>
           </span>
           <span class="taxable-income-value">{{ formatCurrency(results.taxableIncome) }}</span>
         </div>
@@ -1107,7 +1145,6 @@ const pieSlices = computed((): PieSlice[] => {
           {{ t.monthlyPay }}: <strong>{{ formatCurrency(hasSalaryIncome ? results.monthlyNet - totalCashCost / 12 : (results.netPay - totalCashCost) / 12) }}</strong>
           <br/>
           <span v-if="hasSalaryIncome && results.annualGross - results.monthlyNet*12 > 0">{{ t.bonusPay }}: <strong>{{ formatCurrency(results.bonusNet) }}</strong></span>
-          <span v-if="totalCashCost > 0" class="ideco-note">{{ t.disposableIncomeSub }}</span>
         </div>
       </div>
     </div>
@@ -1553,5 +1590,28 @@ const pieSlices = computed((): PieSlice[] => {
   font-size: 0.92rem;
   font-weight: 600;
   color: #111;
+}
+
+.nhi-municipality-breakdown {
+  margin-top: 0.6rem;
+  border: 1px solid #e6e6e6;
+  border-radius: 6px;
+  overflow: hidden;
+  font-size: 0.88rem;
+}
+.nhi-breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.35rem 0.7rem;
+  border-bottom: 1px solid #f0f0f0;
+  color: #555;
+}
+.nhi-breakdown-row:last-child {
+  border-bottom: none;
+}
+.nhi-breakdown-total {
+  font-weight: 600;
+  color: #111;
+  background: #f7f7f7;
 }
 </style>

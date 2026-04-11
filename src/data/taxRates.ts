@@ -71,6 +71,7 @@ export const CITY_NAMES: Record<string, LocaleNames> = {
   sendai:         { ja: '仙台市',     en: 'Sendai' },
   saitama_city:   { ja: 'さいたま市', en: 'Saitama City' },
   chiba_city:     { ja: '千葉市',     en: 'Chiba City' },
+  chiyoda:        { ja: '千代田区',   en: 'Chiyoda' },
   yokohama:       { ja: '横浜市',     en: 'Yokohama' },
   kawasaki:       { ja: '川崎市',     en: 'Kawasaki' },
   sagamihara:     { ja: '相模原市',   en: 'Sagamihara' },
@@ -172,7 +173,7 @@ export const RESIDENT_TAX_RATES: Record<string, PrefectureOverrides> = {
     default: { ...baseStandard },
     cities: { chiba_city: { ...designatedCity } }
   },
-  tokyo:     { default: { ...baseStandard }, cities: {} },
+  tokyo:     { default: { ...baseStandard }, cities: { chiyoda: { ...baseStandard } } },
   kanagawa: {
     default: { prefIncomeRate: 0.04025, cityIncomeRate: 0.06, prefPerCapita: 1800, cityPerCapita: 3500 },
     cities: {
