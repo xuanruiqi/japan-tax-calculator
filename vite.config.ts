@@ -8,6 +8,7 @@ import ui from '@nuxt/ui/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/japan-tax-calculator/',
   plugins: [
     vue(),
     vueJsx(),
