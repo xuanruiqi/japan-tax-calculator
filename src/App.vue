@@ -144,6 +144,22 @@ type AgeGroupType = 'under40' | '40to64' | '65over'
 const ageGroup = ref<AgeGroupType>('under40')
 
 const enrolledEmployeeSI = ref<boolean>(true)
+const hasSpouseOrDependents = ref<boolean>(false)
+const hasSpouse = ref<boolean>(false)
+const spouseAnnualIncome = ref<number | null>(null)
+const spouseAge = ref<number | null>(null)
+
+interface DependentEntry {
+  id: string
+  age: number | null
+}
+const dependents = ref<DependentEntry[]>([])
+const addDependent = () => {
+  dependents.value.push({ id: `dep-${Date.now()}`, age: null })
+}
+const removeDependent = (id: string) => {
+  dependents.value = dependents.value.filter((d) => d.id !== id)
+}
 
 watch(enrolledEmployeeSI, (newVal) => {
   const entries = incomeEntries.value
@@ -242,6 +258,11 @@ const STORAGE_KEY = 'tax-calculator-state'
 interface SavedState {
   currentLocale: 'en' | 'ja'
   enrolledEmployeeSI: boolean
+  hasSpouseOrDependents: boolean
+  hasSpouse: boolean
+  spouseAnnualIncome: number | null
+  spouseAge: number | null
+  dependents: DependentEntry[]
   nhiMode: NhiMode
   nhiManualAmount: number | null
   nhiKintowari: number | null
@@ -266,6 +287,11 @@ const saveState = () => {
   const state: SavedState = {
     currentLocale: currentLocale.value,
     enrolledEmployeeSI: enrolledEmployeeSI.value,
+    hasSpouseOrDependents: hasSpouseOrDependents.value,
+    hasSpouse: hasSpouse.value,
+    spouseAnnualIncome: spouseAnnualIncome.value,
+    spouseAge: spouseAge.value,
+    dependents: dependents.value,
     nhiMode: nhiMode.value,
     nhiManualAmount: nhiManualAmount.value,
     nhiKintowari: nhiKintowari.value,
@@ -297,6 +323,11 @@ const loadState = () => {
     const s: Partial<SavedState> = JSON.parse(raw)
     if (s.currentLocale != null) currentLocale.value = s.currentLocale
     if (s.enrolledEmployeeSI != null) enrolledEmployeeSI.value = s.enrolledEmployeeSI
+    if (s.hasSpouseOrDependents != null) hasSpouseOrDependents.value = s.hasSpouseOrDependents
+    if (s.hasSpouse != null) hasSpouse.value = s.hasSpouse
+    if (s.spouseAnnualIncome !== undefined) spouseAnnualIncome.value = s.spouseAnnualIncome
+    if (s.spouseAge !== undefined) spouseAge.value = s.spouseAge
+    if (s.dependents != null) dependents.value = s.dependents
     if (s.nhiMode != null) nhiMode.value = s.nhiMode
     if (s.nhiManualAmount !== undefined) nhiManualAmount.value = s.nhiManualAmount
     if (s.nhiKintowari !== undefined) nhiKintowari.value = s.nhiKintowari
@@ -323,6 +354,11 @@ const loadState = () => {
 const resetState = () => {
   currentLocale.value = 'ja'
   enrolledEmployeeSI.value = true
+  hasSpouseOrDependents.value = false
+  hasSpouse.value = false
+  spouseAnnualIncome.value = null
+  spouseAge.value = null
+  dependents.value = []
   nhiMode.value = 'manual'
   nhiManualAmount.value = null
   nhiKintowari.value = null
@@ -364,6 +400,11 @@ watch(
   [
     currentLocale,
     enrolledEmployeeSI,
+    hasSpouseOrDependents,
+    hasSpouse,
+    spouseAnnualIncome,
+    spouseAge,
+    dependents,
     nhiMode,
     nhiManualAmount,
     nhiKintowari,
@@ -414,13 +455,45 @@ const availableDeductionTypes = computed(() => {
     'medical_expense',
     'furusato',
     'ideco',
-    'spouse',
     'home_loan',
   ]
   return DEDUCTION_ORDER.filter((type) => {
+    if (type === 'spouse') return false // handled automatically via hasSpouse toggle
+    if (type === 'dependent_general' || type === 'dependent_specified' || type === 'dependent_aged')
+      return false // handled automatically via dependents list
     if (singletons.includes(type)) return !used.has(type)
     return true // counts — always available, user just bumps the number
   })
+})
+
+// Spouse deduction auto-computed from hasSpouse + spouseAnnualIncome + spouseAge
+const autoSpouseDeduction = computed(() => {
+  if (!hasSpouse.value) return 0
+  const income = spouseAnnualIncome.value ?? 0
+  // 配偶者控除: spouse income ≤ 480,000
+  // 老人控除対象配偶者 (age 70+): ¥480,000 instead of ¥380,000
+  if (income <= 480000) return (spouseAge.value ?? 0) >= 70 ? 480000 : 380000
+  // 配偶者特別控除: spouse income 480,001–1,330,000 (age-independent)
+  return calculateDeductionAmount('spouse', income, 0)
+})
+
+// Dependent deductions auto-computed from dependents list
+const autoDependentDeductions = computed(() => {
+  let general = 0, specified = 0, aged = 0
+  for (const dep of dependents.value) {
+    const age = dep.age ?? -1
+    if (age < 16) continue // 年少扶養 — no deduction
+    if (age >= 70) aged++
+    else if (age >= 19 && age <= 22) specified++
+    else general++ // 16–18 and 23–69
+  }
+  return {
+    general, specified, aged,
+    generalAmount: general * 380000,
+    specifiedAmount: specified * 630000,
+    agedAmount: aged * 480000,
+    total: general * 380000 + specified * 630000 + aged * 480000,
+  }
 })
 
 const totalAdditionalDeductions = computed(() => {
@@ -431,13 +504,16 @@ const totalAdditionalDeductions = computed(() => {
     .filter((e) => e.type === 'business')
     .reduce((sum, e) => sum + Math.max(0, (Number(e.revenue) || 0) - (Number(e.expenses) || 0)), 0)
   const gross = salaryGross + bizIncome
-  return deductionEntries.value
-    .filter((e) => !DEDUCTION_DEFS[e.type].isTaxCredit) // tax-credit types are NOT income deductions
-    .reduce(
-      (sum, entry) =>
-        sum + calculateDeductionAmount(entry.type, entry.value, gross, idecoMonthlyLimit.value),
-      0,
-    )
+  const autoTypes = new Set<DeductionType>(['spouse', 'dependent_general', 'dependent_specified', 'dependent_aged'])
+  return (
+    deductionEntries.value
+      .filter((e) => !DEDUCTION_DEFS[e.type].isTaxCredit && !autoTypes.has(e.type))
+      .reduce(
+        (sum, entry) =>
+          sum + calculateDeductionAmount(entry.type, entry.value, gross, idecoMonthlyLimit.value),
+        0,
+      ) + autoSpouseDeduction.value + autoDependentDeductions.value.total
+  )
 })
 
 const furusatoNetDonation = computed(() => {
@@ -838,6 +914,11 @@ const pieSlices = computed((): PieSlice[] => {
             <span>{{ t.enrolledEmployeeSI }}</span>
           </div>
 
+          <div class="si-toggle" style="margin-bottom: 1rem">
+            <USwitch v-model="hasSpouseOrDependents" />
+            <span>{{ t.hasSpouseOrDependents }}</span>
+          </div>
+
           <div class="input-group">
             <label>{{ t.ageGroup }}</label>
             <USelect v-model="ageGroup" :items="ageGroupItems" class="styled-select" />
@@ -1027,6 +1108,65 @@ const pieSlices = computed((): PieSlice[] => {
               </div>
             </div>
           </template>
+        </div>
+
+        <div
+          v-if="hasSpouseOrDependents"
+          class="input-section"
+          style="margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid #eaeaea"
+        >
+          <h2>{{ currentLocale === 'ja' ? '配偶者・被扶養者' : 'Spouse and Dependents' }}</h2>
+
+          <div class="si-toggle" style="margin-bottom: 1rem">
+            <USwitch v-model="hasSpouse" />
+            <span>{{ t.hasSpouse }}</span>
+          </div>
+
+          <div class="input-group" v-if="hasSpouse">
+            <label>{{ t.spouseAnnualIncome }}</label>
+            <UInput type="number" v-model.number="spouseAnnualIncome" :min="0" :step="10000">
+              <template #leading><span class="text-base text-muted font-medium">¥</span></template>
+            </UInput>
+          </div>
+          <div class="input-group" v-if="hasSpouse">
+            <label>{{ currentLocale === 'ja' ? '配偶者の年齢' : 'Spouse Age' }}</label>
+            <UInput type="number" v-model.number="spouseAge" :min="0" :max="120" :step="1" />
+          </div>
+
+          <div class="card-list" v-if="dependents.length > 0" style="margin-top: 0.75rem">
+            <UCard
+              v-for="dep in dependents"
+              :key="dep.id"
+              :ui="{ header: 'py-2 px-3 bg-gray-50', body: 'p-3' }"
+            >
+              <template #header>
+                <div class="flex justify-between items-center">
+                  <span class="text-sm font-semibold">{{
+                    currentLocale === 'ja' ? '被扶養者' : 'Dependent'
+                  }}</span>
+                  <UButton
+                    variant="ghost"
+                    size="xs"
+                    color="error"
+                    class="remove-btn"
+                    icon="i-lucide-x"
+                    @click="removeDependent(dep.id)"
+                    :title="t.removeIncome"
+                  />
+                </div>
+              </template>
+              <div class="input-group" style="margin: 0">
+                <label>{{ currentLocale === 'ja' ? '年齢' : 'Age' }}</label>
+                <UInput type="number" v-model.number="dep.age" :min="0" :max="120" :step="1" />
+              </div>
+            </UCard>
+          </div>
+
+          <div style="margin-top: 0.75rem">
+            <UButton variant="outline" size="sm" class="outline-btn" @click="addDependent">{{
+              currentLocale === 'ja' ? '+ 被扶養者を追加' : '+ Add Dependent'
+            }}</UButton>
+          </div>
         </div>
 
         <div class="input-section">
@@ -1226,11 +1366,95 @@ const pieSlices = computed((): PieSlice[] => {
             </UDropdownMenu>
           </div>
 
-          <p class="no-deductions-msg" v-if="deductionEntries.length === 0">{{ t.noDeductions }}</p>
+          <p class="no-deductions-msg" v-if="deductionEntries.length === 0 && autoSpouseDeduction === 0 && autoDependentDeductions.total === 0">{{ t.noDeductions }}</p>
 
           <div class="card-list">
             <UCard
-              v-for="entry in deductionEntries"
+              v-if="autoSpouseDeduction > 0"
+              :ui="{ header: 'py-2 px-3 bg-gray-50', body: 'p-3' }"
+            >
+              <template #header>
+                <span class="text-sm font-semibold">{{
+                  currentLocale === 'ja' ? DEDUCTION_DEFS['spouse'].nameJa : DEDUCTION_DEFS['spouse'].nameEn
+                }}</span>
+              </template>
+              <div class="deduction-computed">
+                <span class="deduction-computed-label">{{
+                  currentLocale === 'ja' ? DEDUCTION_DEFS['spouse'].inputLabelJa : DEDUCTION_DEFS['spouse'].inputLabelEn
+                }}</span>
+                <span class="deduction-computed-value">{{ formatCurrency(spouseAnnualIncome ?? 0) }}</span>
+              </div>
+              <div class="deduction-computed">
+                <span class="deduction-computed-label">{{
+                  currentLocale === 'ja' ? '控除額' : 'Deduction amount'
+                }}</span>
+                <span class="deduction-computed-value">{{ formatCurrency(autoSpouseDeduction) }}</span>
+              </div>
+              <a class="nta-reference-link" :href="DEDUCTION_DEFS['spouse'].ntaUrl" target="_blank" rel="noopener noreferrer">{{ t.ntaReference }} ↗</a>
+            </UCard>
+
+            <UCard
+              v-if="autoDependentDeductions.general > 0"
+              :ui="{ header: 'py-2 px-3 bg-gray-50', body: 'p-3' }"
+            >
+              <template #header>
+                <span class="text-sm font-semibold">{{
+                  currentLocale === 'ja' ? DEDUCTION_DEFS['dependent_general'].nameJa : DEDUCTION_DEFS['dependent_general'].nameEn
+                }}</span>
+              </template>
+              <div class="deduction-computed">
+                <span class="deduction-computed-label">{{ currentLocale === 'ja' ? '人数' : 'Count' }}</span>
+                <span class="deduction-computed-value">{{ autoDependentDeductions.general }}</span>
+              </div>
+              <div class="deduction-computed">
+                <span class="deduction-computed-label">{{ currentLocale === 'ja' ? '控除額' : 'Deduction amount' }}</span>
+                <span class="deduction-computed-value">{{ formatCurrency(autoDependentDeductions.generalAmount) }}</span>
+              </div>
+              <a class="nta-reference-link" :href="DEDUCTION_DEFS['dependent_general'].ntaUrl" target="_blank" rel="noopener noreferrer">{{ t.ntaReference }} ↗</a>
+            </UCard>
+
+            <UCard
+              v-if="autoDependentDeductions.specified > 0"
+              :ui="{ header: 'py-2 px-3 bg-gray-50', body: 'p-3' }"
+            >
+              <template #header>
+                <span class="text-sm font-semibold">{{
+                  currentLocale === 'ja' ? DEDUCTION_DEFS['dependent_specified'].nameJa : DEDUCTION_DEFS['dependent_specified'].nameEn
+                }}</span>
+              </template>
+              <div class="deduction-computed">
+                <span class="deduction-computed-label">{{ currentLocale === 'ja' ? '人数' : 'Count' }}</span>
+                <span class="deduction-computed-value">{{ autoDependentDeductions.specified }}</span>
+              </div>
+              <div class="deduction-computed">
+                <span class="deduction-computed-label">{{ currentLocale === 'ja' ? '控除額' : 'Deduction amount' }}</span>
+                <span class="deduction-computed-value">{{ formatCurrency(autoDependentDeductions.specifiedAmount) }}</span>
+              </div>
+              <a class="nta-reference-link" :href="DEDUCTION_DEFS['dependent_specified'].ntaUrl" target="_blank" rel="noopener noreferrer">{{ t.ntaReference }} ↗</a>
+            </UCard>
+
+            <UCard
+              v-if="autoDependentDeductions.aged > 0"
+              :ui="{ header: 'py-2 px-3 bg-gray-50', body: 'p-3' }"
+            >
+              <template #header>
+                <span class="text-sm font-semibold">{{
+                  currentLocale === 'ja' ? DEDUCTION_DEFS['dependent_aged'].nameJa : DEDUCTION_DEFS['dependent_aged'].nameEn
+                }}</span>
+              </template>
+              <div class="deduction-computed">
+                <span class="deduction-computed-label">{{ currentLocale === 'ja' ? '人数' : 'Count' }}</span>
+                <span class="deduction-computed-value">{{ autoDependentDeductions.aged }}</span>
+              </div>
+              <div class="deduction-computed">
+                <span class="deduction-computed-label">{{ currentLocale === 'ja' ? '控除額' : 'Deduction amount' }}</span>
+                <span class="deduction-computed-value">{{ formatCurrency(autoDependentDeductions.agedAmount) }}</span>
+              </div>
+              <a class="nta-reference-link" :href="DEDUCTION_DEFS['dependent_aged'].ntaUrl" target="_blank" rel="noopener noreferrer">{{ t.ntaReference }} ↗</a>
+            </UCard>
+
+            <UCard
+              v-for="entry in deductionEntries.filter(e => e.type !== 'spouse' && e.type !== 'dependent_general' && e.type !== 'dependent_specified' && e.type !== 'dependent_aged')"
               :key="entry.id"
               :ui="{ header: 'py-2 px-3 bg-gray-50', body: 'p-3' }"
             >
@@ -1525,6 +1749,23 @@ const pieSlices = computed((): PieSlice[] => {
           <div class="result-row deduction">
             <span>{{ t.basicExemption }}</span>
             <span>- {{ formatCurrency(results.basicExemption) }}</span>
+          </div>
+
+          <div v-if="autoSpouseDeduction > 0" class="result-row deduction user-deduction-row">
+            <span>{{ currentLocale === 'ja' ? DEDUCTION_DEFS['spouse'].nameJa : DEDUCTION_DEFS['spouse'].nameEn }}</span>
+            <span>- {{ formatCurrency(autoSpouseDeduction) }}</span>
+          </div>
+          <div v-if="autoDependentDeductions.generalAmount > 0" class="result-row deduction user-deduction-row">
+            <span>{{ currentLocale === 'ja' ? DEDUCTION_DEFS['dependent_general'].nameJa : DEDUCTION_DEFS['dependent_general'].nameEn }}</span>
+            <span>- {{ formatCurrency(autoDependentDeductions.generalAmount) }}</span>
+          </div>
+          <div v-if="autoDependentDeductions.specifiedAmount > 0" class="result-row deduction user-deduction-row">
+            <span>{{ currentLocale === 'ja' ? DEDUCTION_DEFS['dependent_specified'].nameJa : DEDUCTION_DEFS['dependent_specified'].nameEn }}</span>
+            <span>- {{ formatCurrency(autoDependentDeductions.specifiedAmount) }}</span>
+          </div>
+          <div v-if="autoDependentDeductions.agedAmount > 0" class="result-row deduction user-deduction-row">
+            <span>{{ currentLocale === 'ja' ? DEDUCTION_DEFS['dependent_aged'].nameJa : DEDUCTION_DEFS['dependent_aged'].nameEn }}</span>
+            <span>- {{ formatCurrency(autoDependentDeductions.agedAmount) }}</span>
           </div>
 
           <template v-if="deductionEntries.length > 0">

@@ -27,6 +27,9 @@ export interface LocaleStrings {
   joinsSocialInsurance: string
   joinsEmploymentInsurance: string
   enrolledEmployeeSI: string
+  hasSpouseOrDependents: string
+  hasSpouse: string
+  spouseAnnualIncome: string
   nationalPension: string
   nationalHealthInsurance: string
   nhiModeManual: string
@@ -151,6 +154,9 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     joinsEmploymentInsurance: 'Enrolled in Employment Insurance (雇用保険)',
     enrolledEmployeeSI:
       'Full time employee: Enrolled in Health Insurance (健康保険) & Employee Pension (厚生年金)',
+    hasSpouseOrDependents: 'Has spouse and/or dependents',
+    hasSpouse: 'Has spouse',
+    spouseAnnualIncome: 'Spouse Annual Income (JPY)',
     nationalPension: 'National Pension',
     nationalHealthInsurance: 'National Health Insurance',
     nhiModeManual: 'Enter total amount',
@@ -286,6 +292,9 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     joinsSocialInsurance: '健康保険・厚生年金に加入',
     joinsEmploymentInsurance: '雇用保険に加入',
     enrolledEmployeeSI: '健康保険・厚生年金に加入（フルタイム勤務の方 ）',
+    hasSpouseOrDependents: '配偶者・被扶養者がいる',
+    hasSpouse: '配偶者がいる',
+    spouseAnnualIncome: '配偶者の年収 (円)',
     nationalPension: '国民年金',
     nationalHealthInsurance: '国民健康保険',
     nhiModeManual: '金額を直接入力',
