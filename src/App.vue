@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { calculateTaxesAndInsurance, getStandardRemunerationGrade } from './utils/taxCalculation';
-import { computeNhiBase, calculateMunicipalityNhi, isMunicipalitySupported, type NhiBreakdown } from './utils/nhiCalculation';
+import { computeNhiIncomes, calculateMunicipalityNhi, isMunicipalitySupported, type NhiBreakdown } from './utils/nhiCalculation';
+import { calculateNationalPension, type PensionResult } from './utils/kokunenCalculation';
 import { PREFECTURES_LIST, KYOKAI_KENPO_RATES, RESIDENT_TAX_RATES, PREFECTURE_NAMES, CITY_NAMES } from './data/taxRates';
 import { translations } from './locales';
 import {
@@ -405,8 +406,15 @@ const cashCostEntries = computed(() =>
   deductionEntries.value.filter(e => getCashCost(e, idecoMonthlyLimit.value) > 0)
 );
 
-// Resolve income entries into the two inputs computeNhiBase needs
+// Resolve income figures for NHI / pension base calculation.
+// NHI and pension are assessed on *previous-year* income, mirroring resident tax.
+// When previousYearIncomeInput is set we use it as salary gross (same convention as
+// resident tax in taxCalculation.ts); otherwise we fall back to current-year entries.
 function getNhiIncomes(): { salaryGross: number; bizIncome: number } {
+  const prevRaw = previousYearIncomeInput.value;
+  if (prevRaw !== null && prevRaw !== '' && Number(prevRaw) >= 0) {
+    return { salaryGross: Number(prevRaw), bizIncome: 0 };
+  }
   const salaryGross = incomeEntries.value
     .filter(e => e.type === 'salary')
     .reduce((sum, e) => sum + (Number(e.monthlySalary) || 0) * 12 + (Number(e.annualBonus) || 0), 0);
@@ -418,6 +426,14 @@ function getNhiIncomes(): { salaryGross: number; bizIncome: number } {
 
 const municipalityAutoAvailable = computed(() => isMunicipalitySupported(residenceCity.value));
 
+// National Pension exemption (only relevant when not in employee SI)
+const pensionResult = computed((): PensionResult => {
+  if (enrolledEmployeeSI.value) return { monthlyPremium: 0, annualPremium: 0, exemptionTier: 'none' };
+  const { salaryGross, bizIncome } = getNhiIncomes();
+  const { totalIncome } = computeNhiIncomes(salaryGross, bizIncome);
+  return calculateNationalPension(totalIncome);
+});
+
 // If the city changes and municipality mode is no longer supported, fall back to manual
 watch(municipalityAutoAvailable, (available) => {
   if (!available && nhiMode.value === 'municipality') nhiMode.value = 'manual';
@@ -426,8 +442,8 @@ watch(municipalityAutoAvailable, (available) => {
 // Municipality NHI breakdown (null when city not supported)
 const municipalityNhiBreakdown = computed((): NhiBreakdown | null => {
   const { salaryGross, bizIncome } = getNhiIncomes();
-  const base = computeNhiBase(salaryGross, bizIncome);
-  return calculateMunicipalityNhi(residenceCity.value, base, ageGroup.value);
+  const { totalIncome, base } = computeNhiIncomes(salaryGross, bizIncome);
+  return calculateMunicipalityNhi(residenceCity.value, totalIncome, base, ageGroup.value);
 });
 
 // Compute NHI amount (only relevant when not in employee SI)
@@ -441,8 +457,8 @@ const nhiAmount = computed(() => {
   }
   // Auto mode: 所得割 + 均等割
   const { salaryGross, bizIncome } = getNhiIncomes();
-  const nhiBase = computeNhiBase(salaryGross, bizIncome);
-  const shotokuwari = Math.floor(nhiBase * (Number(nhiShotokuwariRate.value) || 0) / 100);
+  const { base } = computeNhiIncomes(salaryGross, bizIncome);
+  const shotokuwari = Math.floor(base * (Number(nhiShotokuwariRate.value) || 0) / 100);
   const kintowari = Number(nhiKintowari.value) || 0;
   return shotokuwari + kintowari;
 });
@@ -502,7 +518,7 @@ const results = computed(() => {
     healthInsuranceRate: globalSI ? hRate : 0,
     kaigoInsuranceRate: globalSI ? kRate : 0,
     pensionRate: globalSI ? pRate : 0,
-    nationalPensionAmount: globalSI ? 0 : 17920 * 12,
+    nationalPensionAmount: globalSI ? 0 : pensionResult.value.annualPremium,
     nationalHealthInsuranceAmount: globalSI ? 0 : nhiAmount.value,
     employmentInsuranceRate: eRate,
     primaryJoinsSocialInsurance: primarySalaryEntry.value?.joinsSocialInsurance !== false,
@@ -715,6 +731,10 @@ const pieSlices = computed((): PieSlice[] => {
 
           <template v-else-if="nhiMode === 'municipality' && municipalityNhiBreakdown">
             <div class="nhi-municipality-breakdown">
+              <div v-if="municipalityNhiBreakdown.reduction > 0" class="nhi-breakdown-row nhi-breakdown-reduction">
+                <span>{{ currentLocale === 'ja' ? '均等割軽減' : 'Per-capita Reduction' }}</span>
+                <span>{{ municipalityNhiBreakdown.reduction * 100 }}%{{ currentLocale === 'ja' ? '軽減' : ' off' }}</span>
+              </div>
               <div class="nhi-breakdown-row">
                 <span>{{ currentLocale === 'ja' ? '医療分' : 'Medical' }}</span>
                 <span>¥{{ municipalityNhiBreakdown.medical.toLocaleString() }}</span>
@@ -1022,8 +1042,15 @@ const pieSlices = computed((): PieSlice[] => {
         </template>
 
         <!-- National Pension (when not in 厚生年金) -->
-        <div class="result-row deduction social-insurance-row" v-if="results.nationalPension > 0">
-          <span>{{ t.nationalPension }}</span>
+        <div class="result-row deduction social-insurance-row" v-if="!enrolledEmployeeSI">
+          <span>
+            {{ t.nationalPension }}
+            <span v-if="pensionResult.exemptionTier !== 'none'" class="pension-exemption-badge">
+              {{ pensionResult.exemptionTier === 'full'
+                  ? (currentLocale === 'ja' ? '全額免除' : 'Full Exemption')
+                  : (currentLocale === 'ja' ? `${pensionResult.exemptionTier}免除` : `${pensionResult.exemptionTier} Exempt`) }}
+            </span>
+          </span>
           <span class="social-ins-value">- {{ formatCurrency(results.nationalPension) }}</span>
         </div>
 
@@ -1613,5 +1640,24 @@ const pieSlices = computed((): PieSlice[] => {
   font-weight: 600;
   color: #111;
   background: #f7f7f7;
+}
+.nhi-breakdown-reduction {
+  color: #2e7d32;
+  background: #f1f8f1;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.pension-exemption-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: #f1f8f1;
+  color: #2e7d32;
+  border: 1px solid #c8e6c9;
+  vertical-align: middle;
 }
 </style>
