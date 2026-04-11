@@ -1687,10 +1687,7 @@ const pieSlices = computed((): PieSlice[] => {
             : null
         "
         @confirm="handleHomeLoanConfirm"
-        @cancel="
-          showHomeLoanWizard = false
-          editingHomeLoanId = null
-        "
+        @cancel="showHomeLoanWizard = false; editingHomeLoanId = null"
       />
 
       <!-- Visualization Panel -->
