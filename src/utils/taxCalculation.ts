@@ -118,6 +118,7 @@ export interface TaxCalculationOptions {
   additionalHealthInsurance?: number;  // health insurance from non-primary workplaces
   additionalKaigoInsurance?: number;   // kaigo insurance from non-primary workplaces
   additionalPension?: number;          // pension from non-primary workplaces
+  additionalEmploymentInsurance?: number; // employment insurance from non-primary workplaces
   businessIncome?: number;        // net 事業所得 (revenue - expenses), summed across all entries
   additionalDeductions?: number;  // sum of all 所得控除 entered by user (excludes furusato)
   furusatoNetDonation?: number;   // (donation - 2,000) — applied as direct tax credit, not income deduction
@@ -211,15 +212,6 @@ export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: n
   else if (totalIncome <= 24500000) incomeTaxBasicExemption = 320000;
   else if (totalIncome <= 25000000) incomeTaxBasicExemption = 160000;
   else                              incomeTaxBasicExemption = 0;
-
-  // Resident tax basic exemption increased from ¥430,000 → ¥480,000 (FY2025+)
-  // Phase-out starts at ¥23.5M (was ¥24M)
-  let residentTaxBasicExemption: number;
-  if      (totalIncome <= 23500000) residentTaxBasicExemption = 480000;
-  else if (totalIncome <= 24000000) residentTaxBasicExemption = 380000;
-  else if (totalIncome <= 24500000) residentTaxBasicExemption = 290000;
-  else if (totalIncome <= 25000000) residentTaxBasicExemption = 150000;
-  else                              residentTaxBasicExemption = 0;
 
   // --- Taxable Income ---
   const extraDeductions = options.additionalDeductions ?? 0;
@@ -333,7 +325,6 @@ export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: n
   const netPay = annualGross - totalDeductions;
 
   // Monthly/Bonus breakdown approximation
-  const totalMonthsEarning = 12 + (annualBonus > 0 ? 1 : 0); // Simplified ratio
   let monthlyNet = 0;
   let bonusNet = 0;
   

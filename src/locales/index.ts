@@ -1,137 +1,137 @@
 export interface LocaleStrings {
-  title: string;
-  subtitle: string;
-  locationSettings: string;
-  incomeDetails: string;
-  annualBreakdown: string;
-  monthlyPay: string;
-  bonusPay: string;
-  empPrefecture: string;
-  resPrefecture: string;
-  municipality: string;
-  standardCity: string;
-  ageGroup: string;
-  monthlySalary: string;
-  annualBonus: string;
-  prevIncome: string;
-  prevIncomePlaceholder: string;
-  addIncome: string;
-  salaryIncomeName: string;
-  salaryIncomeDesc: string;
-  businessIncomeName: string;
-  businessIncomeDesc: string;
-  businessRevenue: string;
-  businessExpenses: string;
-  primaryJob: string;
-  removeIncome: string;
-  joinsSocialInsurance: string;
-  joinsEmploymentInsurance: string;
-  enrolledEmployeeSI: string;
-  nationalPension: string;
-  nationalHealthInsurance: string;
-  nhiModeManual: string;
-  nhiModeAuto: string;
-  nhiModeCity: string;
-  nhiTotalAmount: string;
-  nhiKintowari: string;
-  nhiShotokuwari: string;
-  ageUnder40: string;
-  age40to64: string;
-  age65over: string;
-  showSettings: string;
-  hideSettings: string;
-  unionSelect: string;
-  unionKyokai: string;
-  unionIts: string;
-  unionTjk: string;
-  unionOther: string;
-  customHealth: string;
-  customKaigo: string;
-  customPension: string;
-  employmentInsIndustry: string;
-  industryGeneral: string;
-  industryAgriForestry: string;
-  industryConstruction: string;
-  customEmploymentIns: string;
-  grossIncome: string;
-  employmentIncomeDeduction: string;
-  employmentIncome: string;
-  basicExemption: string;
-  healthIns: string;
-  nursingCare: string;
-  pension: string;
-  employmentIns: string;
-  incomeTax: string;
-  taxableIncome: string;
-  marginalRateLabel: string;
-  marginalRateSurtax: string;
-  residentTax: string;
-  residentPref: string;
-  residentMuni: string;
-  totalDeductions: string;
-  netPay: string;
-  gradeString: string;
-  cashCostContributions: string;
-  disposableIncome: string;
-  disposableIncomeSub: string;
-  furusatoCredit: string;
-  furusatoIncomeTaxCredit: string;
-  furusatoResidentTaxCredit: string;
-  deductionsSection: string;
-  addDeduction: string;
-  noDeductions: string;
-  removeDeduction: string;
-  deductionAmount: string;
-  totalAdditionalDeductions: string;
-  homeLoanCredit: string;
-  homeLoanIncomeTaxCredit: string;
-  homeLoanResidentTaxCredit: string;
-  homeLoanWizardTitle: string;
-  homeLoanStepMoveIn: string;
-  homeLoanStepHouseType: string;
-  homeLoanStepLoanDetails: string;
-  homeLoanStepConfirm: string;
-  homeLoanMoveInYear: string;
-  homeLoanHouseType: string;
-  homeLoanNewConstruction: string;
-  homeLoanExistingHousing: string;
-  homeLoanYearEndBalance: string;
-  homeLoanDeductionYear: string;
-  homeLoanDeductionYearSuffix: string;
-  homeLoanMaxBalance: string;
-  homeLoanMaxYears: string;
-  homeLoanCreditRate: string;
-  homeLoanEstimatedCredit: string;
-  homeLoanNotEligible: string;
-  homeLoanExceedsPeriod: string;
-  wizardNext: string;
-  wizardBack: string;
-  wizardConfirm: string;
-  wizardCancel: string;
-  wizardEdit: string;
-  ntaReference: string;
-  idecoLimitTooltipTitle: string;
-  idecoLimitTooltipRows: { label: string; limit: string }[];
+  title: string
+  subtitle: string
+  locationSettings: string
+  incomeDetails: string
+  annualBreakdown: string
+  monthlyPay: string
+  bonusPay: string
+  empPrefecture: string
+  resPrefecture: string
+  municipality: string
+  standardCity: string
+  ageGroup: string
+  monthlySalary: string
+  annualBonus: string
+  prevIncome: string
+  prevIncomePlaceholder: string
+  addIncome: string
+  salaryIncomeName: string
+  salaryIncomeDesc: string
+  businessIncomeName: string
+  businessIncomeDesc: string
+  businessRevenue: string
+  businessExpenses: string
+  primaryJob: string
+  removeIncome: string
+  joinsSocialInsurance: string
+  joinsEmploymentInsurance: string
+  enrolledEmployeeSI: string
+  nationalPension: string
+  nationalHealthInsurance: string
+  nhiModeManual: string
+  nhiModeAuto: string
+  nhiModeCity: string
+  nhiTotalAmount: string
+  nhiKintowari: string
+  nhiShotokuwari: string
+  ageUnder40: string
+  age40to64: string
+  age65over: string
+  showSettings: string
+  hideSettings: string
+  unionSelect: string
+  unionKyokai: string
+  unionIts: string
+  unionTjk: string
+  unionOther: string
+  customHealth: string
+  customKaigo: string
+  customPension: string
+  employmentInsIndustry: string
+  industryGeneral: string
+  industryAgriForestry: string
+  industryConstruction: string
+  customEmploymentIns: string
+  grossIncome: string
+  employmentIncomeDeduction: string
+  employmentIncome: string
+  basicExemption: string
+  healthIns: string
+  nursingCare: string
+  pension: string
+  employmentIns: string
+  incomeTax: string
+  taxableIncome: string
+  marginalRateLabel: string
+  marginalRateSurtax: string
+  residentTax: string
+  residentPref: string
+  residentMuni: string
+  totalDeductions: string
+  netPay: string
+  gradeString: string
+  cashCostContributions: string
+  disposableIncome: string
+  disposableIncomeSub: string
+  furusatoCredit: string
+  furusatoIncomeTaxCredit: string
+  furusatoResidentTaxCredit: string
+  deductionsSection: string
+  addDeduction: string
+  noDeductions: string
+  removeDeduction: string
+  deductionAmount: string
+  totalAdditionalDeductions: string
+  homeLoanCredit: string
+  homeLoanIncomeTaxCredit: string
+  homeLoanResidentTaxCredit: string
+  homeLoanWizardTitle: string
+  homeLoanStepMoveIn: string
+  homeLoanStepHouseType: string
+  homeLoanStepLoanDetails: string
+  homeLoanStepConfirm: string
+  homeLoanMoveInYear: string
+  homeLoanHouseType: string
+  homeLoanNewConstruction: string
+  homeLoanExistingHousing: string
+  homeLoanYearEndBalance: string
+  homeLoanDeductionYear: string
+  homeLoanDeductionYearSuffix: string
+  homeLoanMaxBalance: string
+  homeLoanMaxYears: string
+  homeLoanCreditRate: string
+  homeLoanEstimatedCredit: string
+  homeLoanNotEligible: string
+  homeLoanExceedsPeriod: string
+  wizardNext: string
+  wizardBack: string
+  wizardConfirm: string
+  wizardCancel: string
+  wizardEdit: string
+  ntaReference: string
+  idecoLimitTooltipTitle: string
+  idecoLimitTooltipRows: { label: string; limit: string }[]
 }
 
 export const translations: Record<'en' | 'ja', LocaleStrings> = {
   en: {
     title: 'Japan Tax Calculator',
     subtitle: 'Estimate your take-home pay',
-    
+
     // Sections
     locationSettings: 'Basic Settings',
     incomeDetails: 'Income Details',
     annualBreakdown: 'Annual Breakdown',
     monthlyPay: 'Monthly Take-home',
     bonusPay: 'Bonus Take-home',
-    
+
     // Location Settings
     empPrefecture: 'Prefecture of Employment',
     resPrefecture: 'Prefecture of Residence',
     municipality: 'Municipality',
     standardCity: 'Standard / Other',
-    
+
     // Income Details
     ageGroup: 'Age Group',
     monthlySalary: 'Monthly Salary (JPY)',
@@ -149,7 +149,8 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     removeIncome: 'Remove',
     joinsSocialInsurance: 'Joins Health Insurance & Pension here',
     joinsEmploymentInsurance: 'Enrolled in Employment Insurance (雇用保険)',
-    enrolledEmployeeSI: 'Enrolled in Health Insurance & Employee Pension (社会保険)',
+    enrolledEmployeeSI:
+      'Full time employee: Enrolled in Health Insurance (健康保険) & Employee Pension (厚生年金)',
     nationalPension: 'National Pension',
     nationalHealthInsurance: 'National Health Insurance',
     nhiModeManual: 'Enter total amount',
@@ -163,7 +164,7 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     ageUnder40: 'Under 40 - No Kaigo',
     age40to64: '40 to 64 - Pay Kaigo',
     age65over: '65 or older - Billed separately',
-    
+
     // Advanced Settings
     showSettings: 'Show Detailed Settings',
     hideSettings: 'Hide Detailed Settings',
@@ -172,7 +173,7 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     unionIts: 'Kanto ITS - 4.75%',
     unionTjk: 'TJK - 4.45%',
     unionOther: 'Other Union (Custom Rate)',
-    
+
     customHealth: 'Health Insurance Rate (%)',
     customKaigo: 'Nursing Care Insurance Rate (%)',
     customPension: 'Pension Rate (%)',
@@ -181,7 +182,7 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     industryAgriForestry: 'Agriculture, Forestry, Fishery & Sake Brewing - 0.7%',
     industryConstruction: 'Construction - 0.7%',
     customEmploymentIns: 'Employment Insurance Rate (%)',
-    
+
     // Breakdown
     grossIncome: 'Gross Income',
     employmentIncomeDeduction: 'Employment Income Deduction',
@@ -256,18 +257,18 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
   ja: {
     title: '手取り計算ツール (日本)',
     subtitle: 'あなたの手取り額を計算します',
-    
+
     locationSettings: '基本設定',
     incomeDetails: '収入情報',
     annualBreakdown: '年間内訳',
     monthlyPay: '月々の手取り',
     bonusPay: 'ボーナスの手取り',
-    
+
     empPrefecture: '勤務地',
     resPrefecture: '居住する都道府県',
     municipality: '市区町村',
     standardCity: 'その他市区町村 (標準)',
-    
+
     ageGroup: '年齢',
     monthlySalary: '月額給与 (円)',
     annualBonus: '年間ボーナス (円)',
@@ -284,7 +285,7 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     removeIncome: '削除',
     joinsSocialInsurance: '健康保険・厚生年金に加入',
     joinsEmploymentInsurance: '雇用保険に加入',
-    enrolledEmployeeSI: '健康保険・厚生年金に加入（社会保険）',
+    enrolledEmployeeSI: '健康保険・厚生年金に加入（フルタイム勤務の方 ）',
     nationalPension: '国民年金',
     nationalHealthInsurance: '国民健康保険',
     nhiModeManual: '金額を直接入力',
@@ -297,7 +298,7 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     ageUnder40: '40歳未満 - 介護保険なし',
     age40to64: '40歳〜64歳 - 介護保険あり',
     age65over: '65歳以上 - 別途請求',
-    
+
     showSettings: '詳細設定を表示',
     hideSettings: '詳細設定を隠す',
     unionSelect: '健康保険組合',
@@ -305,7 +306,7 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     unionIts: '関東ITS - 4.75%',
     unionTjk: '東京情報サービス健保組合 (TJK) - 4.45%',
     unionOther: 'その他の組合 (カスタム料率)',
-    
+
     customHealth: '健康保険料率 (%)',
     customKaigo: '介護保険料率 (%)',
     customPension: '厚生年金料率 (%)',
@@ -314,7 +315,7 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     industryAgriForestry: '農林水産・清酒製造業 - 0.7%',
     industryConstruction: '建設業 - 0.7%',
     customEmploymentIns: '雇用保険料率 (%)',
-    
+
     grossIncome: '額面給与',
     employmentIncomeDeduction: '給与所得控除',
     employmentIncome: '給与所得',
@@ -384,5 +385,5 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
       { label: '公務員', limit: '20,000円' },
       { label: '専業主婦・主夫（第3号）', limit: '23,000円' },
     ],
-  }
-};
+  },
+}
