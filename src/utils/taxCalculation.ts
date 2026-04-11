@@ -173,7 +173,7 @@ export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: n
   const annualGross = totalSalaryGross + businessIncome;
 
   // --- Employment Insurance (雇用保険) — calculated on primary salary gross ---
-  const annualEmploymentInsurance = Math.floor(primarySalaryGross * EMP_INS_RATE);
+  const annualEmploymentInsurance = Math.floor(primarySalaryGross * EMP_INS_RATE) + (options.additionalEmploymentInsurance ?? 0);
   const monthlyEmploymentInsurance = Math.floor(monthlySalary * EMP_INS_RATE);
 
   const nationalPension = options.nationalPensionAmount ?? 0;

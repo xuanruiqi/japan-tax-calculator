@@ -28,11 +28,12 @@ interface IncomeEntry {
   annualBonus: number | null;    // salary only
   revenue: number | null;        // business only
   expenses: number | null;       // business only
-  joinsSocialInsurance: boolean;  // salary only — whether health/pension is enrolled at this workplace
+  joinsSocialInsurance: boolean;      // salary only — whether health/pension is enrolled at this workplace
+  joinsEmploymentInsurance: boolean;  // salary only — whether employment insurance is enrolled at this workplace
 }
 
 const incomeEntries = ref<IncomeEntry[]>([
-  { id: 'salary-default', type: 'salary', name: '', monthlySalary: 300000, annualBonus: 0, revenue: null, expenses: null, joinsSocialInsurance: true },
+  { id: 'salary-default', type: 'salary', name: '', monthlySalary: 300000, annualBonus: 0, revenue: null, expenses: null, joinsSocialInsurance: true, joinsEmploymentInsurance: true },
 ]);
 const addIncomeEntry = (type: IncomeType) => {
   incomeEntries.value.push({
@@ -44,6 +45,7 @@ const addIncomeEntry = (type: IncomeType) => {
     revenue: type === 'business' ? 0 : null,
     expenses: type === 'business' ? 0 : null,
     joinsSocialInsurance: false,
+    joinsEmploymentInsurance: type === 'salary',
   });
 };
 
@@ -116,6 +118,19 @@ const ageGroup = ref<AgeGroupType>('under40');
 
 const enrolledEmployeeSI = ref<boolean>(true);
 
+watch(enrolledEmployeeSI, (newVal) => {
+  const entries = incomeEntries.value;
+  const sole = entries.length === 1 ? entries[0] : undefined;
+  if (!newVal && sole?.type === 'salary') {
+    // Toggled off with a single salary card → convert to business
+    const annualGross = (Number(sole.monthlySalary) || 0) * 12 + (Number(sole.annualBonus) || 0);
+    incomeEntries.value = [{ id: sole.id, type: 'business', name: sole.name, monthlySalary: null, annualBonus: null, revenue: annualGross, expenses: 0, joinsSocialInsurance: false, joinsEmploymentInsurance: false }];
+  } else if (newVal && sole?.type === 'business') {
+    // Toggled on with a single business card → convert to salary
+    const monthly = Math.round((Number(sole.revenue) || 0) / 12);
+    incomeEntries.value = [{ id: sole.id, type: 'salary', name: sole.name, monthlySalary: monthly, annualBonus: 0, revenue: null, expenses: null, joinsSocialInsurance: true, joinsEmploymentInsurance: true }];
+  }
+});
 
 type NhiMode = 'manual' | 'auto' | 'municipality';
 const nhiMode = ref<NhiMode>('manual');
@@ -258,7 +273,7 @@ const resetState = () => {
   nhiKintowari.value = null;
   nhiShotokuwariRate.value = null;
   incomeEntries.value = [
-    { id: 'salary-default', type: 'salary', name: '', monthlySalary: 300000, annualBonus: 0, revenue: null, expenses: null, joinsSocialInsurance: true },
+    { id: 'salary-default', type: 'salary', name: '', monthlySalary: 300000, annualBonus: 0, revenue: null, expenses: null, joinsSocialInsurance: true, joinsEmploymentInsurance: true },
   ];
   previousYearIncomeInput.value = null;
   employmentPrefecture.value = 'tokyo';
@@ -479,21 +494,22 @@ const results = computed(() => {
   const additionalSalaryGross = nonPrimaryEntries
     .reduce((sum, e) => sum + (Number(e.monthlySalary) || 0) * 12 + (Number(e.annualBonus) || 0), 0);
 
-  // Social insurance from non-primary workplaces that have SI joined
+  // Social/employment insurance from non-primary workplaces
   let additionalHealthInsurance = 0;
   let additionalKaigoInsurance = 0;
   let additionalPension = 0;
   for (const entry of nonPrimaryEntries) {
-    if (!entry.joinsSocialInsurance) continue;
     const ms = Number(entry.monthlySalary) || 0;
     const ab = Number(entry.annualBonus) || 0;
-    const hObj = getStandardRemunerationGrade(ms, 1390000);
-    const pObj = getStandardRemunerationGrade(ms, 650000);
-    const bonusStdH = Math.min(Math.floor(ab / 1000) * 1000, 5730000);
-    const bonusStdP = Math.min(Math.floor(ab / 1000) * 1000, 1500000);
-    additionalHealthInsurance += Math.floor(hObj.value * hRate) * 12 + Math.floor(bonusStdH * hRate);
-    additionalKaigoInsurance += Math.floor(hObj.value * kRate) * 12 + Math.floor(bonusStdH * kRate);
-    additionalPension += Math.floor(pObj.value * pRate) * 12 + Math.floor(bonusStdP * pRate);
+    if (entry.joinsSocialInsurance) {
+      const hObj = getStandardRemunerationGrade(ms, 1390000);
+      const pObj = getStandardRemunerationGrade(ms, 650000);
+      const bonusStdH = Math.min(Math.floor(ab / 1000) * 1000, 5730000);
+      const bonusStdP = Math.min(Math.floor(ab / 1000) * 1000, 1500000);
+      additionalHealthInsurance += Math.floor(hObj.value * hRate) * 12 + Math.floor(bonusStdH * hRate);
+      additionalKaigoInsurance += Math.floor(hObj.value * kRate) * 12 + Math.floor(bonusStdH * kRate);
+      additionalPension += Math.floor(pObj.value * pRate) * 12 + Math.floor(bonusStdP * pRate);
+    }
   }
 
   // Total net business income
@@ -520,7 +536,7 @@ const results = computed(() => {
     pensionRate: globalSI ? pRate : 0,
     nationalPensionAmount: globalSI ? 0 : pensionResult.value.annualPremium,
     nationalHealthInsuranceAmount: globalSI ? 0 : nhiAmount.value,
-    employmentInsuranceRate: eRate,
+    employmentInsuranceRate: primarySalaryEntry.value?.joinsEmploymentInsurance !== false ? eRate : 0,
     primaryJoinsSocialInsurance: primarySalaryEntry.value?.joinsSocialInsurance !== false,
     additionalSalaryGross,
     additionalHealthInsurance: globalSI ? additionalHealthInsurance : 0,
@@ -831,6 +847,33 @@ const pieSlices = computed((): PieSlice[] => {
               <UInput type="number" v-model.number="entry.annualBonus" :min="0" :step="1000">
                 <template #leading><span class="text-base text-muted font-medium">¥</span></template>
               </UInput>
+              <div class="si-toggle" style="margin-top: 0.6rem;" v-if="entry === primarySalaryEntry">
+                <USwitch v-model="entry.joinsEmploymentInsurance" />
+                <span>
+                  {{ t.joinsEmploymentInsurance }}
+                  <UTooltip :content="{ side: 'bottom' }" :ui="{ content: 'h-auto bg-white text-gray-900 border border-gray-200 shadow-lg rounded-lg p-0 max-w-xs' }">
+                    <template #content>
+                      <div class="text-xs leading-relaxed" style="padding: 1rem;" v-if="currentLocale === 'ja'">
+                        次の<b>(1)および(2)の両方</b>に該当する場合、雇用保険に加入する必要があります。<br/><br/>
+                        <b>(1) 31日以上継続して雇用される見込みがあること</b><br/>
+                        ・期間の定めなく雇用される場合<br/>
+                        ・雇用期間が31日以上の場合<br/>
+                        ・契約に更新規定があり、31日未満での雇止め明示がない場合<br/><br/>
+                        <b>(2) 1週間の所定労働時間が20時間以上であること</b>
+                      </div>
+                      <div class="text-xs leading-relaxed" style="padding: 1rem;" v-else>
+                        Employment insurance is required when <b>both</b> of the following apply:<br/><br/>
+                        <b>(1) Expected to be employed continuously for 31+ days</b><br/>
+                        · No fixed term<br/>
+                        · Contract of 31+ days<br/>
+                        · Contract has renewal clause with no explicit non-renewal before 31 days<br/><br/>
+                        <b>(2) Scheduled weekly hours are 20 or more</b>
+                      </div>
+                    </template>
+                    <span class="inline-flex items-center justify-center w-4 h-4 text-[0.65rem] font-bold text-gray-500 bg-gray-100 rounded-full cursor-help ml-1">?</span>
+                  </UTooltip>
+                </span>
+              </div>
               <div class="si-toggle" style="margin-top: 0.6rem;">
                 <USwitch v-model="entry.joinsSocialInsurance" />
                 <span>

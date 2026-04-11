@@ -25,6 +25,7 @@ export interface LocaleStrings {
   primaryJob: string;
   removeIncome: string;
   joinsSocialInsurance: string;
+  joinsEmploymentInsurance: string;
   enrolledEmployeeSI: string;
   nationalPension: string;
   nationalHealthInsurance: string;
@@ -147,6 +148,7 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     primaryJob: 'Primary',
     removeIncome: 'Remove',
     joinsSocialInsurance: 'Joins Health Insurance & Pension here',
+    joinsEmploymentInsurance: 'Enrolled in Employment Insurance (雇用保険)',
     enrolledEmployeeSI: 'Enrolled in Health Insurance & Employee Pension (社会保険)',
     nationalPension: 'National Pension',
     nationalHealthInsurance: 'National Health Insurance',
@@ -281,6 +283,7 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     primaryJob: '主たる勤務先',
     removeIncome: '削除',
     joinsSocialInsurance: '健康保険・厚生年金に加入',
+    joinsEmploymentInsurance: '雇用保険に加入',
     enrolledEmployeeSI: '健康保険・厚生年金に加入（社会保険）',
     nationalPension: '国民年金',
     nationalHealthInsurance: '国民健康保険',
