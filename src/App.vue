@@ -882,7 +882,7 @@ const pieSlices = computed((): PieSlice[] => {
 <template>
   <UApp>
     <UContainer
-      class="py-8 lg:py-0"
+      class="py-8 lg:py-0 pb-20"
       :ui="{ base: 'w-full mx-auto px-4 sm:px-6 lg:px-0 lg:max-w-none' }"
     >
       <UButton
@@ -1952,6 +1952,17 @@ const pieSlices = computed((): PieSlice[] => {
 
       </UPageGrid>
     </UContainer>
+  <UFooter
+    class="sticky bottom-0 border-t border-gray-200 bg-white/85 backdrop-blur-sm"
+    :ui="{ top: 'text-center text-xs text-gray-400 space-y-0.5', container: 'hidden' }"
+  >
+    <template #top>
+      <div style="padding: 0.75rem 0;">
+        <div>&copy; 2026 Xuanrui Qi</div>
+        <div><a href="https://github.com/xuanruiqi/japan-tax-calculator" target="_blank" rel="noopener noreferrer">github.com/xuanruiqi/japan-tax-calculator</a></div>
+      </div>
+    </template>
+  </UFooter>
   </UApp>
 </template>
 
