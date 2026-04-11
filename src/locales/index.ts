@@ -291,7 +291,7 @@ export const translations: Record<'en' | 'ja', LocaleStrings> = {
     removeIncome: '削除',
     joinsSocialInsurance: '健康保険・厚生年金に加入',
     joinsEmploymentInsurance: '雇用保険に加入',
-    enrolledEmployeeSI: '健康保険・厚生年金に加入（フルタイム勤務の方 ）',
+    enrolledEmployeeSI: '健康保険・厚生年金に加入（フルタイム勤務の方）',
     hasSpouseOrDependents: '配偶者・被扶養者がいる',
     hasSpouse: '配偶者がいる',
     spouseAnnualIncome: '配偶者の年収 (円)',

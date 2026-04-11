@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, watchEffect } from 'vue'
 import { calculateTaxesAndInsurance, getStandardRemunerationGrade } from './utils/taxCalculation'
 import {
   computeNhiIncomes,
@@ -30,6 +30,7 @@ import HomeLoanWizard from './components/HomeLoanWizard.vue'
 
 const currentLocale = ref<'en' | 'ja'>('ja')
 const t = computed(() => translations[currentLocale.value])
+watchEffect(() => { document.title = t.value.title })
 
 const previousYearIncomeInput = ref<number | null | ''>(null)
 
@@ -880,7 +881,10 @@ const pieSlices = computed((): PieSlice[] => {
 
 <template>
   <UApp>
-    <div class="app-container">
+    <UContainer
+      class="py-8 lg:py-0"
+      :ui="{ base: 'w-full mx-auto px-4 sm:px-6 lg:px-0 lg:max-w-none' }"
+    >
       <UButton
         variant="outline"
         size="sm"
@@ -890,6 +894,8 @@ const pieSlices = computed((): PieSlice[] => {
       >
         {{ currentLocale === 'en' ? '日本語' : 'English' }}
       </UButton>
+
+      <UPageGrid :ui="{ base: 'grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-0' }">
 
       <!-- Input Panel -->
       <div class="panel input-panel">
@@ -1943,65 +1949,52 @@ const pieSlices = computed((): PieSlice[] => {
           :center-sub="currentLocale === 'ja' ? '年収' : 'Gross'"
         />
       </div>
-    </div>
+
+      </UPageGrid>
+    </UContainer>
   </UApp>
 </template>
 
 <style scoped>
-/* Layout */
-.app-container {
-  height: 100vh;
-  width: 100%;
-  display: flex;
-  justify-content: flex-start;
-  align-items: stretch;
-  background-color: #fafafa;
-  padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  color: #111;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
+/* Layout — mobile: cards */
 .panel {
   background: #ffffff;
-  border-right: 1px solid #eaeaea;
-  padding: 3rem;
-  overflow-y: auto;
-  flex-shrink: 0;
-}
-
-.input-panel {
-  width: 100%;
-  max-width: 480px;
-  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.02);
-  z-index: 2;
-}
-
-.results-panel {
-  width: 100%;
-  max-width: 480px;
-  background: #fdfdfd;
-  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.01);
-  z-index: 1;
+  border: 1px solid #eaeaea;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
 .viz-panel {
-  flex: 1 1 0;
-  min-width: 280px;
   background: #fafafa;
-  border-right: none;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  padding: 3rem 2rem;
-  overflow-y: auto;
 }
 
 .viz-panel > * {
   width: 100%;
   max-width: 340px;
+}
+
+/* Layout — desktop (lg+): restore full-height side-by-side columns */
+@media (min-width: 1024px) {
+  .panel {
+    height: 100vh;
+    overflow-y: auto;
+    border-radius: 0;
+    border: none;
+    border-right: 1px solid #eaeaea;
+    box-shadow: none;
+    padding: 3rem;
+  }
+
+  .viz-panel {
+    border-right: none;
+    background: #fafafa;
+    justify-content: flex-start;
+    padding: 3rem 2rem;
+  }
 }
 
 .viz-title {
@@ -2027,6 +2020,13 @@ const pieSlices = computed((): PieSlice[] => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.5rem;
+  padding-right: 5rem; /* clear fixed lang toggle on mobile */
+}
+
+@media (min-width: 1024px) {
+  .section-header {
+    padding-right: 0;
+  }
 }
 
 .section-header h2 {
