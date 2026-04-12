@@ -161,4 +161,13 @@ export default {
   primaryJobLabel: '主',
   subJobLabel: '副{n}',
   yearsUnit: '年間',
+
+  // iDeCo tax-saving tip
+  idecoTipTitle: 'iDeCoで節税しよう',
+  idecoTipDesc: '月額{monthly}円（年間{annual}円）をiDeCoに拠出することで、課税所得を抑えることができます。',
+  idecoTipCurrent: '現在',
+  idecoTipWithIdeco: 'iDeCo最大拠出',
+  idecoTipIncomeTax: '所得税',
+  idecoTipResidentTax: '住民税',
+  idecoTipSavings: '節税効果',
 }

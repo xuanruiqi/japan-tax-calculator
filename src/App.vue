@@ -59,6 +59,8 @@ const {
   totalCashCost,
   cashCostEntries,
   results,
+  hasIdecoDeduction,
+  resultsWithMaxIdeco,
 } = storeToRefs(store)
 
 const { addDependent, removeDependent, deductionAmountFor } = store
@@ -195,6 +197,19 @@ const hasMultipleSiEntries = computed(() => siBreakdown.value.length > 1)
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(value)
 }
+
+// iDeCo tax-saving tip
+const idecoSavings = computed(() => {
+  const withIdeco = resultsWithMaxIdeco.value
+  if (!withIdeco) return null
+  return {
+    incomeTax: results.value.incomeTax - withIdeco.incomeTax,
+    residentTax: results.value.residentTax - withIdeco.residentTax,
+    total:
+      results.value.incomeTax - withIdeco.incomeTax +
+      (results.value.residentTax - withIdeco.residentTax),
+  }
+})
 
 // Pie chart slices
 const pieSlices = computed((): PieSlice[] => {
@@ -833,11 +848,60 @@ const pieSlices = computed((): PieSlice[] => {
       <div class="panel viz-panel">
         <h2 class="viz-title">{{ t('vizTitle') }}</h2>
         <p class="viz-sub">{{ t('vizSubtitle') }}</p>
-        <DonutChart
-          :slices="pieSlices"
-          :center-label="formatCurrency(results.annualGross)"
-          :center-sub="t('vizGross')"
-        />
+        <div class="flex flex-col gap-8 w-full">
+          <DonutChart
+            :slices="pieSlices"
+            :center-label="formatCurrency(results.annualGross)"
+            :center-sub="t('vizGross')"
+          />
+
+          <!-- iDeCo Tax-Saving Tip -->
+          <UCard
+            v-if="!hasIdecoDeduction && idecoSavings"
+            :ui="{ header: 'py-2 px-3', body: 'p-3' }"
+          >
+          <template #header>
+            <div class="flex items-center gap-1.5">
+              <span>💡</span>
+              <span class="text-sm font-semibold text-amber-800">{{ t('idecoTipTitle') }}</span>
+            </div>
+          </template>
+          <p class="text-xs text-amber-700 mb-3 leading-snug">
+            {{
+              t('idecoTipDesc', {
+                monthly: formatCurrency(idecoMonthlyLimit),
+                annual: formatCurrency(idecoMonthlyLimit * 12),
+              })
+            }}
+          </p>
+          <table class="ideco-tip-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>{{ t('idecoTipCurrent') }}</th>
+                <th>{{ t('idecoTipWithIdeco') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{{ t('idecoTipIncomeTax') }}</td>
+                <td>{{ formatCurrency(results.incomeTax) }}</td>
+                <td class="col-with-ideco">{{ formatCurrency(resultsWithMaxIdeco?.incomeTax ?? 0) }}</td>
+              </tr>
+              <tr>
+                <td>{{ t('idecoTipResidentTax') }}</td>
+                <td>{{ formatCurrency(results.residentTax) }}</td>
+                <td class="col-with-ideco">{{ formatCurrency(resultsWithMaxIdeco?.residentTax ?? 0) }}</td>
+              </tr>
+              <tr class="ideco-tip-savings-row">
+                <td>{{ t('idecoTipSavings') }}</td>
+                <td></td>
+                <td class="ideco-tip-savings-amount">{{ formatCurrency(idecoSavings.total) }}</td>
+              </tr>
+            </tbody>
+          </table>
+          </UCard>
+        </div>
       </div>
 
       </UPageGrid>
@@ -913,6 +977,52 @@ const pieSlices = computed((): PieSlice[] => {
   color: #999;
   margin-bottom: 2rem;
   text-align: center;
+}
+
+/* iDeCo tax-saving tip table */
+.ideco-tip-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.ideco-tip-table th {
+  text-align: right;
+  font-weight: 600;
+  color: #374151;
+  padding: 0.2rem 0.4rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.ideco-tip-table th:first-child {
+  text-align: left;
+}
+
+.ideco-tip-table td {
+  padding: 0.25rem 0.4rem;
+  text-align: right;
+  color: #111827;
+}
+
+.ideco-tip-table td:first-child {
+  text-align: left;
+  color: #6b7280;
+}
+
+.col-with-ideco {
+  color: #16a34a !important;
+  font-weight: 500;
+}
+
+.ideco-tip-savings-row td {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 0.4rem;
+  font-weight: 600;
+}
+
+.ideco-tip-savings-amount {
+  color: #15803d !important;
+  font-size: 0.95rem;
 }
 
 /* Section headers */

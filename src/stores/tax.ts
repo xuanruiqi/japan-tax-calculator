@@ -1,6 +1,6 @@
 import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
-import { calculateTaxesAndInsurance, getStandardRemunerationGrade } from '../utils/taxCalculation'
+import { calculateTaxesAndInsurance, getStandardRemunerationGrade, type TaxCalculationOptions } from '../utils/taxCalculation'
 import {
   computeNhiIncomes,
   calculateMunicipalityNhi,
@@ -302,7 +302,7 @@ export const useTaxStore = defineStore('tax', () => {
     deductionEntries.value.filter((e) => getCashCost(e, idecoMonthlyLimit.value) > 0),
   )
 
-  const results = computed(() => {
+  const taxCalculationInput = computed((): { salary: number; bonus: number; options: TaxCalculationOptions } => {
     const salary = Number(monthlySalaryInput.value) || 0
     const bonus = Number(annualBonusInput.value) || 0
 
@@ -362,28 +362,49 @@ export const useTaxStore = defineStore('tax', () => {
 
     const globalSI = enrolledEmployeeSI.value
 
+    return {
+      salary,
+      bonus,
+      options: {
+        previousYearGross: prevIncome,
+        healthInsuranceRate: globalSI ? hRate : 0,
+        kaigoInsuranceRate: globalSI ? kRate : 0,
+        pensionRate: globalSI ? pRate : 0,
+        nationalPensionAmount: globalSI ? 0 : pensionResult.value.annualPremium,
+        nationalHealthInsuranceAmount: globalSI ? 0 : nhiAmount.value,
+        employmentInsuranceRate:
+          primarySalaryEntry.value?.joinsEmploymentInsurance !== false ? eRate : 0,
+        primaryJoinsSocialInsurance: primarySalaryEntry.value?.joinsSocialInsurance !== false,
+        additionalSalaryGross,
+        additionalHealthInsurance: globalSI ? additionalHealthInsurance : 0,
+        additionalKaigoInsurance: globalSI ? additionalKaigoInsurance : 0,
+        additionalPension: globalSI ? additionalPension : 0,
+        businessIncome: totalBusinessIncome,
+        prefIncomeRate: localTaxRates.prefIncomeRate,
+        cityIncomeRate: localTaxRates.cityIncomeRate,
+        prefPerCapita: localTaxRates.prefPerCapita,
+        cityPerCapita: localTaxRates.cityPerCapita,
+        additionalDeductions: totalAdditionalDeductions.value,
+        furusatoNetDonation: furusatoNetDonation.value,
+        homeLoanCredit: homeLoanCreditAmount.value,
+      },
+    }
+  })
+
+  const results = computed(() => {
+    const { salary, bonus, options } = taxCalculationInput.value
+    return calculateTaxesAndInsurance(salary, bonus, options)
+  })
+
+  const hasIdecoDeduction = computed(() => deductionEntries.value.some((e) => e.type === 'ideco'))
+
+  const resultsWithMaxIdeco = computed(() => {
+    if (hasIdecoDeduction.value) return null
+    const { salary, bonus, options } = taxCalculationInput.value
+    const maxIdecoAnnual = idecoMonthlyLimit.value * 12
     return calculateTaxesAndInsurance(salary, bonus, {
-      previousYearGross: prevIncome,
-      healthInsuranceRate: globalSI ? hRate : 0,
-      kaigoInsuranceRate: globalSI ? kRate : 0,
-      pensionRate: globalSI ? pRate : 0,
-      nationalPensionAmount: globalSI ? 0 : pensionResult.value.annualPremium,
-      nationalHealthInsuranceAmount: globalSI ? 0 : nhiAmount.value,
-      employmentInsuranceRate:
-        primarySalaryEntry.value?.joinsEmploymentInsurance !== false ? eRate : 0,
-      primaryJoinsSocialInsurance: primarySalaryEntry.value?.joinsSocialInsurance !== false,
-      additionalSalaryGross,
-      additionalHealthInsurance: globalSI ? additionalHealthInsurance : 0,
-      additionalKaigoInsurance: globalSI ? additionalKaigoInsurance : 0,
-      additionalPension: globalSI ? additionalPension : 0,
-      businessIncome: totalBusinessIncome,
-      prefIncomeRate: localTaxRates.prefIncomeRate,
-      cityIncomeRate: localTaxRates.cityIncomeRate,
-      prefPerCapita: localTaxRates.prefPerCapita,
-      cityPerCapita: localTaxRates.cityPerCapita,
-      additionalDeductions: totalAdditionalDeductions.value,
-      furusatoNetDonation: furusatoNetDonation.value,
-      homeLoanCredit: homeLoanCreditAmount.value,
+      ...options,
+      additionalDeductions: (options.additionalDeductions ?? 0) + maxIdecoAnnual,
     })
   })
 
@@ -701,6 +722,8 @@ export const useTaxStore = defineStore('tax', () => {
     totalCashCost,
     cashCostEntries,
     results,
+    hasIdecoDeduction,
+    resultsWithMaxIdeco,
     // Actions
     addIncomeEntry,
     removeIncomeEntry,

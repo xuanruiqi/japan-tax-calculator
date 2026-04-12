@@ -170,4 +170,13 @@ export default {
   primaryJobLabel: 'Primary',
   subJobLabel: 'Job {n}',
   yearsUnit: ' years',
+
+  // iDeCo tax-saving tip
+  idecoTipTitle: 'Save taxes with iDeCo',
+  idecoTipDesc: 'Invest up to ¥{monthly}/month (¥{annual}/year) into iDeCo and reduce your taxable income.',
+  idecoTipCurrent: 'Current',
+  idecoTipWithIdeco: 'Max iDeCo',
+  idecoTipIncomeTax: 'Income Tax',
+  idecoTipResidentTax: 'Resident Tax',
+  idecoTipSavings: 'Tax Savings',
 }
