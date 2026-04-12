@@ -5,6 +5,7 @@ import type { MessageSchema } from '../../locales'
 import { type DeductionEntry, DEDUCTION_DEFS } from '../../data/deductions'
 import { useTaxStore } from '../../stores/tax'
 import DeductionCardBase from './DeductionCardBase.vue'
+import YenInputNumber from '../YenInputNumber.vue'
 
 interface Props {
   entry: DeductionEntry
@@ -26,7 +27,9 @@ const name = computed(() =>
 )
 
 const inputLabel = computed(() =>
-  locale.value === 'ja' ? DEDUCTION_DEFS['ideco'].inputLabelJa : DEDUCTION_DEFS['ideco'].inputLabelEn,
+  locale.value === 'ja'
+    ? DEDUCTION_DEFS['ideco'].inputLabelJa
+    : DEDUCTION_DEFS['ideco'].inputLabelEn,
 )
 
 const ntaUrl = DEDUCTION_DEFS['ideco'].ntaUrl
@@ -50,8 +53,7 @@ const formatCurrency = (value: number) =>
       <UTooltip
         :content="{ side: 'bottom' }"
         :ui="{
-          content:
-            'h-auto bg-white text-gray-900 border border-gray-200 shadow-lg rounded-lg p-0',
+          content: 'h-auto bg-white text-gray-900 border border-gray-200 shadow-lg rounded-lg p-0',
         }"
       >
         <template #content>
@@ -88,9 +90,7 @@ const formatCurrency = (value: number) =>
     <label class="deduction-input-label">{{ inputLabel }}</label>
     <UFormField :error="isOverLimit ? overLimitWarning : undefined">
       <!-- eslint-disable-next-line vue/no-mutating-props -->
-      <UInput type="number" v-model.number="entry.value" :min="0" :step="1000" class="w-full">
-        <template #leading><span class="text-base text-muted font-medium">¥</span></template>
-      </UInput>
+      <YenInputNumber v-model="entry.value" :min="0" :step="1000" class="w-full" />
     </UFormField>
     <div class="deduction-computed">
       <span class="deduction-computed-label">{{ t('deductionAmount') }}</span>

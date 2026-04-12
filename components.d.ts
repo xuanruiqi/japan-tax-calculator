@@ -12,7 +12,6 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
-    AutoDeductionCard: typeof import('./src/components/AutoDeductionCard.vue')['default']
     DeductionCard: typeof import('./src/components/deductions/DeductionCard.vue')['default']
     DeductionCardBase: typeof import('./src/components/deductions/DeductionCardBase.vue')['default']
     DeductionSection: typeof import('./src/components/DeductionSection.vue')['default']
@@ -34,17 +33,18 @@ declare module 'vue' {
     UFooter: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Footer.vue')['default']
     UFormField: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/FormField.vue')['default']
     UInput: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Input.vue')['default']
+    UInputNumber: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/InputNumber.vue')['default']
     UModal: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Modal.vue')['default']
     UPageGrid: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/PageGrid.vue')['default']
     USelect: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Select.vue')['default']
     USwitch: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Switch.vue')['default']
     UTooltip: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Tooltip.vue')['default']
+    YenInputNumber: typeof import('./src/components/YenInputNumber.vue')['default']
   }
 }
 
 // For TSX support
 declare global {
-  const AutoDeductionCard: typeof import('./src/components/AutoDeductionCard.vue')['default']
   const DeductionCard: typeof import('./src/components/deductions/DeductionCard.vue')['default']
   const DeductionCardBase: typeof import('./src/components/deductions/DeductionCardBase.vue')['default']
   const DeductionSection: typeof import('./src/components/DeductionSection.vue')['default']
@@ -66,9 +66,11 @@ declare global {
   const UFooter: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Footer.vue')['default']
   const UFormField: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/FormField.vue')['default']
   const UInput: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Input.vue')['default']
+  const UInputNumber: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/InputNumber.vue')['default']
   const UModal: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Modal.vue')['default']
   const UPageGrid: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/PageGrid.vue')['default']
   const USelect: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Select.vue')['default']
   const USwitch: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Switch.vue')['default']
   const UTooltip: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Tooltip.vue')['default']
+  const YenInputNumber: typeof import('./src/components/YenInputNumber.vue')['default']
 }

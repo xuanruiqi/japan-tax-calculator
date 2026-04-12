@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import type { MessageSchema } from '../locales'
 import { useTaxStore } from '../stores/tax'
+import YenInputNumber from './YenInputNumber.vue'
 
 const { t, locale: _locale } = useI18n<{ message: MessageSchema }>()
 const locale = computed(() => _locale.value as 'en' | 'ja')
@@ -63,24 +64,12 @@ const incomePickerItems = computed(() => [
         <!-- Salary inputs -->
         <template v-if="entry.type === 'salary'">
           <label class="deduction-input-label">{{ t('monthlySalary') }}</label>
-          <UInput type="number" v-model.number="entry.monthlySalary" :min="0" :step="1000">
-            <template #leading
-              ><span class="text-base text-muted font-medium">¥</span></template
-            >
-          </UInput>
+          <YenInputNumber v-model="entry.monthlySalary" :min="0" :step="1000" />
           <label class="deduction-input-label" style="margin-top: 0.5rem">{{
             t('annualBonus')
           }}</label>
-          <UInput type="number" v-model.number="entry.annualBonus" :min="0" :step="1000">
-            <template #leading
-              ><span class="text-base text-muted font-medium">¥</span></template
-            >
-          </UInput>
-          <div
-            class="si-toggle"
-            style="margin-top: 0.6rem"
-            v-if="entry === primarySalaryEntry"
-          >
+          <YenInputNumber v-model="entry.annualBonus" :min="0" :step="1000" />
+          <div class="si-toggle" style="margin-top: 0.6rem" v-if="entry === primarySalaryEntry">
             <USwitch v-model="entry.joinsEmploymentInsurance" />
             <span>
               {{ t('joinsEmploymentInsurance') }}
@@ -92,11 +81,7 @@ const incomePickerItems = computed(() => [
                 }"
               >
                 <template #content>
-                  <div
-                    class="text-xs leading-relaxed"
-                    style="padding: 1rem"
-                    v-if="locale === 'ja'"
-                  >
+                  <div class="text-xs leading-relaxed" style="padding: 1rem" v-if="locale === 'ja'">
                     次の<b>(1)および(2)の両方</b>に該当する場合、雇用保険に加入する必要があります。<br /><br />
                     <b>(1) 31日以上継続して雇用される見込みがあること</b><br />
                     ・期間の定めなく雇用される場合<br />
@@ -105,13 +90,11 @@ const incomePickerItems = computed(() => [
                     <b>(2) 1週間の所定労働時間が20時間以上であること</b>
                   </div>
                   <div class="text-xs leading-relaxed" style="padding: 1rem" v-else>
-                    Employment insurance is required when <b>both</b> of the following
-                    apply:<br /><br />
+                    Employment insurance is required when <b>both</b> of the following apply:<br /><br />
                     <b>(1) Expected to be employed continuously for 31+ days</b><br />
                     · No fixed term<br />
                     · Contract of 31+ days<br />
-                    · Contract has renewal clause with no explicit non-renewal before 31
-                    days<br /><br />
+                    · Contract has renewal clause with no explicit non-renewal before 31 days<br /><br />
                     <b>(2) Scheduled weekly hours are 20 or more</b>
                   </div>
                 </template>
@@ -134,11 +117,7 @@ const incomePickerItems = computed(() => [
                 }"
               >
                 <template #content>
-                  <div
-                    class="text-xs leading-relaxed"
-                    style="padding: 1rem"
-                    v-if="locale === 'ja'"
-                  >
+                  <div class="text-xs leading-relaxed" style="padding: 1rem" v-if="locale === 'ja'">
                     以下のいずれかに該当する場合、勤務先の社会保険に加入する必要があります。<br /><br />
                     <b>① フルタイムの3/4以上</b><br />
                     正社員の所定労働時間・日数の3/4以上勤務している場合<br /><br />
@@ -155,8 +134,7 @@ const incomePickerItems = computed(() => [
                     <b>1. You work 3/4+ of full-time hours and days;</b><br /><br />
                     <b>2. All five conditions are met:</b><br />
                     - Weekly working hours: 20+ hours/week<br />
-                    - Monthly wage: ¥88,000+ (base pay only, excl. overtime, commuting,
-                    bonus)<br />
+                    - Monthly wage: ¥88,000+ (base pay only, excl. overtime, commuting, bonus)<br />
                     - Employment period: expected to exceed 2 months<br />
                     - Not a full-time student<br />
                     - Employer has 51+ employees (pension-insured)
@@ -174,19 +152,11 @@ const incomePickerItems = computed(() => [
         <!-- Business inputs -->
         <template v-else>
           <label class="deduction-input-label">{{ t('businessRevenue') }}</label>
-          <UInput type="number" v-model.number="entry.revenue" :min="0" :step="1000">
-            <template #leading
-              ><span class="text-base text-muted font-medium">¥</span></template
-            >
-          </UInput>
+          <YenInputNumber v-model="entry.revenue" :min="0" :step="1000" />
           <label class="deduction-input-label" style="margin-top: 0.5rem">{{
             t('businessExpenses')
           }}</label>
-          <UInput type="number" v-model.number="entry.expenses" :min="0" :step="1000">
-            <template #leading
-              ><span class="text-base text-muted font-medium">¥</span></template
-            >
-          </UInput>
+          <YenInputNumber v-model="entry.expenses" :min="0" :step="1000" />
         </template>
       </UCard>
     </div>
@@ -199,15 +169,12 @@ const incomePickerItems = computed(() => [
 
     <div class="input-group" style="margin-top: 1rem">
       <label>{{ t('prevIncome') }}</label>
-      <UInput
-        type="number"
-        v-model.number="previousYearIncomeInput"
+      <YenInputNumber
+        v-model="previousYearIncomeInput"
         :min="0"
         :step="1000"
         :placeholder="t('prevIncomePlaceholder')"
-      >
-        <template #leading><span class="text-base text-muted font-medium">¥</span></template>
-      </UInput>
+      />
     </div>
   </div>
 </template>

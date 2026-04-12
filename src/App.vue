@@ -11,16 +11,20 @@ import DonutChart, { type PieSlice } from './components/DonutChart.vue'
 import HomeLoanWizard from './components/HomeLoanWizard.vue'
 import IncomeSection from './components/IncomeSection.vue'
 import DeductionSection from './components/DeductionSection.vue'
+import YenInputNumber from './components/YenInputNumber.vue'
 import { useTaxStore } from './stores/tax'
 
 const { t, locale: _locale } = useI18n<{ message: MessageSchema }>()
 // Wrap in a typed computed so comparisons against 'en' | 'ja' are type-safe
 const locale = computed({
   get: () => _locale.value as 'en' | 'ja',
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  set: (v: 'en' | 'ja') => { (_locale as any).value = v },
+  set: (v: 'en' | 'ja') => {
+    ;(_locale as unknown as { value: 'en' | 'ja' }).value = v
+  },
 })
-watchEffect(() => { document.title = t('title') })
+watchEffect(() => {
+  document.title = t('title')
+})
 
 const store = useTaxStore()
 const {
@@ -113,6 +117,16 @@ const openHomeLoanEdit = (id: string) => {
   showHomeLoanWizard.value = true
 }
 
+const openHomeLoanWizard = () => {
+  editingHomeLoanId.value = null
+  showHomeLoanWizard.value = true
+}
+
+const closeHomeLoanWizard = () => {
+  showHomeLoanWizard.value = false
+  editingHomeLoanId.value = null
+}
+
 const resetState = () => {
   store.reset()
   locale.value = 'ja'
@@ -122,7 +136,11 @@ const resetState = () => {
 const savedLocale = store.load()
 if (savedLocale === 'en' || savedLocale === 'ja') locale.value = savedLocale
 
-watch(() => store.$state, () => store.save(locale.value), { deep: true })
+watch(
+  () => store.$state,
+  () => store.save(locale.value),
+  { deep: true },
+)
 watch(locale, () => store.save(locale.value))
 
 interface SiBreakdownEntry {
@@ -206,7 +224,8 @@ const idecoSavings = computed(() => {
     incomeTax: results.value.incomeTax - withIdeco.incomeTax,
     residentTax: results.value.residentTax - withIdeco.residentTax,
     total:
-      results.value.incomeTax - withIdeco.incomeTax +
+      results.value.incomeTax -
+      withIdeco.incomeTax +
       (results.value.residentTax - withIdeco.residentTax),
   }
 })
@@ -229,7 +248,11 @@ const pieSlices = computed((): PieSlice[] => {
     { label: t('residentTax'), value: r.residentTax, color: '#a78bfa' },
     { label: t('pieIdeco'), value: idecoAmount, color: '#fb923c' },
     { label: t('pieFurusato'), value: furusatoDonation, color: '#e879a0' },
-    { label: t('pieTakeHome'), value: Math.max(0, r.netPay - totalCashCost.value), color: '#22223b' },
+    {
+      label: t('pieTakeHome'),
+      value: Math.max(0, r.netPay - totalCashCost.value),
+      color: '#22223b',
+    },
   ]
 })
 </script>
@@ -251,443 +274,560 @@ const pieSlices = computed((): PieSlice[] => {
       </UButton>
 
       <UPageGrid :ui="{ base: 'grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-0' }">
-
-      <!-- Input Panel -->
-      <div class="panel input-panel">
-        <div
-          class="input-section location-section"
-          style="margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid #eaeaea"
-        >
-          <div class="section-header">
-            <h2>{{ t('locationSettings') }}</h2>
-            <UButton
-              variant="outline"
-              size="sm"
-              color="error"
-              class="reset-btn rounded-full"
-              @click="resetState"
-              >{{ t('reset') }}</UButton
-            >
-          </div>
-
-          <div class="si-toggle" style="margin-bottom: 1rem">
-            <USwitch v-model="enrolledEmployeeSI" />
-            <span>{{ t('enrolledEmployeeSI') }}</span>
-          </div>
-
-          <div class="si-toggle" style="margin-bottom: 1rem">
-            <USwitch v-model="hasSpouseOrDependents" />
-            <span>{{ t('hasSpouseOrDependents') }}</span>
-          </div>
-
-          <div class="input-group">
-            <label>{{ t('ageGroup') }}</label>
-            <USelect v-model="ageGroup" :items="ageGroupItems" class="styled-select" />
-          </div>
-
-          <div class="input-group" v-if="enrolledEmployeeSI">
-            <label>{{ t('empPrefecture') }}</label>
-            <USelect
-              v-model="employmentPrefecture"
-              :items="prefectureItems"
-              class="styled-select"
-            />
-          </div>
-
-          <div class="input-group">
-            <label>{{ t('resPrefecture') }}</label>
-            <USelect
-              v-model="residencePrefecture"
-              :items="prefectureItems"
-              class="styled-select"
-              @update:model-value="handleResidencePrefectureChange"
-            />
-          </div>
-
-          <div class="input-group" v-if="availableCities.length > 0">
-            <label>{{ t('municipality') }}</label>
-            <USelect v-model="residenceCity" :items="cityItems" class="styled-select" />
-          </div>
-
-          <div v-if="!enrolledEmployeeSI" class="nhi-section">
-            <h3 style="margin: 1rem 0 0.5rem; font-size: 0.95rem; font-weight: 600">
-              {{ t('nationalHealthInsurance') }}
-            </h3>
-            <UButtonGroup class="nhi-toggle-group">
+        <!-- Input Panel -->
+        <div class="panel input-panel">
+          <div
+            class="input-section location-section"
+            style="margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid #eaeaea"
+          >
+            <div class="section-header">
+              <h2>{{ t('locationSettings') }}</h2>
               <UButton
-                :variant="nhiMode === 'manual' ? 'solid' : 'outline'"
+                variant="outline"
                 size="sm"
-                class="nhi-toggle-btn"
-                @click="nhiMode = 'manual'"
-                >{{ t('nhiModeManual') }}</UButton
+                color="error"
+                class="reset-btn rounded-full"
+                @click="resetState"
+                >{{ t('reset') }}</UButton
               >
-              <UButton
-                :variant="nhiMode === 'auto' ? 'solid' : 'outline'"
-                size="sm"
-                class="nhi-toggle-btn"
-                @click="nhiMode = 'auto'"
-                >{{ t('nhiModeAuto') }}</UButton
-              >
-              <UButton
-                :variant="nhiMode === 'municipality' ? 'solid' : 'outline'"
-                size="sm"
-                class="nhi-toggle-btn"
-                :disabled="!municipalityAutoAvailable"
-                @click="nhiMode = 'municipality'"
-                >{{ t('nhiModeCity') }}</UButton
-              >
-            </UButtonGroup>
-
-            <template v-if="nhiMode === 'manual'">
-              <label class="deduction-input-label" style="margin-top: 0.5rem">{{
-                t('nhiTotalAmount')
-              }}</label>
-              <UInput type="number" v-model.number="nhiManualAmount" :min="0" :step="1000">
-                <template #leading
-                  ><span class="text-base text-muted font-medium">¥</span></template
-                >
-              </UInput>
-            </template>
-
-            <template v-else-if="nhiMode === 'auto'">
-              <label class="deduction-input-label" style="margin-top: 0.5rem">{{
-                t('nhiKintowari')
-              }}</label>
-              <UInput type="number" v-model.number="nhiKintowari" :min="0" :step="100">
-                <template #leading
-                  ><span class="text-base text-muted font-medium">¥</span></template
-                >
-              </UInput>
-              <label class="deduction-input-label" style="margin-top: 0.5rem">{{
-                t('nhiShotokuwari')
-              }}</label>
-              <UInput type="number" v-model.number="nhiShotokuwariRate" :min="0" :step="0.01">
-                <template #trailing><span class="text-sm text-muted">%</span></template>
-              </UInput>
-            </template>
-
-            <template v-else-if="nhiMode === 'municipality' && municipalityNhiBreakdown">
-              <div class="nhi-municipality-breakdown">
-                <div
-                  v-if="municipalityNhiBreakdown.reduction > 0"
-                  class="nhi-breakdown-row nhi-breakdown-reduction"
-                >
-                  <span>{{ t('nhiPerCapitaReduction') }}</span>
-                  <span>{{ municipalityNhiBreakdown.reduction * 100 }}% {{ t('nhiReductionOff') }}</span>
-                </div>
-                <div class="nhi-breakdown-row">
-                  <span>{{ t('nhiMedical') }}</span>
-                  <span>¥{{ municipalityNhiBreakdown.medical.toLocaleString() }}</span>
-                </div>
-                <div class="nhi-breakdown-row">
-                  <span>{{ t('nhiSupport') }}</span>
-                  <span>¥{{ municipalityNhiBreakdown.support.toLocaleString() }}</span>
-                </div>
-                <div class="nhi-breakdown-row" v-if="ageGroup === '40to64'">
-                  <span>{{ t('nhiLongTermCare') }}</span>
-                  <span>¥{{ municipalityNhiBreakdown.kaigo.toLocaleString() }}</span>
-                </div>
-                <div class="nhi-breakdown-row">
-                  <span>{{ t('nhiChildSupport') }}</span>
-                  <span>¥{{ municipalityNhiBreakdown.kodomo.toLocaleString() }}</span>
-                </div>
-                <div class="nhi-breakdown-row nhi-breakdown-total">
-                  <span>{{ t('nhiTotal') }}</span>
-                  <span>¥{{ municipalityNhiBreakdown.total.toLocaleString() }}</span>
-                </div>
-              </div>
-            </template>
-          </div>
-
-          <template v-if="enrolledEmployeeSI">
-            <UButton
-              variant="ghost"
-              size="sm"
-              class="settings-toggle-btn"
-              :icon="showAdvancedOptions ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
-              :label="showAdvancedOptions ? t('hideSettings') : t('showSettings')"
-              @click="showAdvancedOptions = !showAdvancedOptions"
-              style="margin-top: 0.5rem"
-            />
-
-            <div v-show="showAdvancedOptions" class="advanced-options-panel">
-              <div class="input-group">
-                <label>{{ t('unionSelect') }}</label>
-                <USelect
-                  v-model="selectedKenpo"
-                  :items="kenpoItems"
-                  class="styled-select"
-                  @update:model-value="handleKenpoChange"
-                />
-              </div>
-
-              <div class="input-group">
-                <label>{{ t('customHealth') }}</label>
-                <UInput type="number" v-model.number="customHealthRate" :min="0" :step="0.01">
-                  <template #trailing><span class="text-sm text-muted">%</span></template>
-                </UInput>
-              </div>
-
-              <div class="input-group">
-                <label>{{ t('customKaigo') }}</label>
-                <UInput type="number" v-model.number="customKaigoRate" :min="0" :step="0.01">
-                  <template #trailing><span class="text-sm text-muted">%</span></template>
-                </UInput>
-              </div>
-
-              <div class="input-group">
-                <label>{{ t('customPension') }}</label>
-                <UInput type="number" v-model.number="customPensionRate" :min="0" :step="0.01">
-                  <template #trailing><span class="text-sm text-muted">%</span></template>
-                </UInput>
-              </div>
-
-              <div class="input-group">
-                <label>{{ t('employmentInsIndustry') }}</label>
-                <USelect
-                  v-model="selectedIndustry"
-                  :items="industryItems"
-                  class="styled-select"
-                  @update:model-value="handleIndustryChange"
-                />
-              </div>
-
-              <div class="input-group">
-                <label>{{ t('customEmploymentIns') }}</label>
-                <UInput
-                  type="number"
-                  v-model.number="customEmploymentInsRate"
-                  :min="0"
-                  :step="0.01"
-                >
-                  <template #trailing><span class="text-sm text-muted">%</span></template>
-                </UInput>
-              </div>
             </div>
-          </template>
-        </div>
 
-        <div
-          v-if="hasSpouseOrDependents"
-          class="input-section"
-          style="margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid #eaeaea"
-        >
-          <h2>{{ t('spouseAndDependents') }}</h2>
+            <div class="si-toggle" style="margin-bottom: 1rem">
+              <USwitch v-model="enrolledEmployeeSI" />
+              <span>{{ t('enrolledEmployeeSI') }}</span>
+            </div>
 
-          <div class="si-toggle" style="margin-bottom: 1rem">
-            <USwitch v-model="hasSpouse" />
-            <span>{{ t('hasSpouse') }}</span>
-          </div>
+            <div class="si-toggle" style="margin-bottom: 1rem">
+              <USwitch v-model="hasSpouseOrDependents" />
+              <span>{{ t('hasSpouseOrDependents') }}</span>
+            </div>
 
-          <div class="input-group" v-if="hasSpouse">
-            <label>{{ t('spouseAnnualIncome') }}</label>
-            <UInput type="number" v-model.number="spouseAnnualIncome" :min="0" :step="10000">
-              <template #leading><span class="text-base text-muted font-medium">¥</span></template>
-            </UInput>
-          </div>
-          <div class="input-group" v-if="hasSpouse">
-            <label>{{ t('spouseAge') }}</label>
-            <UInput type="number" v-model.number="spouseAge" :min="0" :max="120" :step="1" />
-          </div>
+            <div class="input-group">
+              <label>{{ t('ageGroup') }}</label>
+              <USelect v-model="ageGroup" :items="ageGroupItems" class="styled-select" />
+            </div>
 
-          <div class="card-list" v-if="dependents.length > 0" style="margin-top: 0.75rem">
-            <UCard
-              v-for="dep in dependents"
-              :key="dep.id"
-              :ui="{ header: 'py-2 px-3 bg-gray-50', body: 'p-3' }"
-            >
-              <template #header>
-                <div class="flex justify-between items-center">
-                  <span class="text-sm font-semibold">{{ t('dependent') }}</span>
-                  <UButton
-                    variant="ghost"
-                    size="xs"
-                    color="error"
-                    class="remove-btn"
-                    icon="i-lucide-x"
-                    @click="removeDependent(dep.id)"
-                    :title="t('removeIncome')"
-                  />
+            <div class="input-group" v-if="enrolledEmployeeSI">
+              <label>{{ t('empPrefecture') }}</label>
+              <USelect
+                v-model="employmentPrefecture"
+                :items="prefectureItems"
+                class="styled-select"
+              />
+            </div>
+
+            <div class="input-group">
+              <label>{{ t('resPrefecture') }}</label>
+              <USelect
+                v-model="residencePrefecture"
+                :items="prefectureItems"
+                class="styled-select"
+                @update:model-value="handleResidencePrefectureChange"
+              />
+            </div>
+
+            <div class="input-group" v-if="availableCities.length > 0">
+              <label>{{ t('municipality') }}</label>
+              <USelect v-model="residenceCity" :items="cityItems" class="styled-select" />
+            </div>
+
+            <div v-if="!enrolledEmployeeSI" class="nhi-section">
+              <h3 style="margin: 1rem 0 0.5rem; font-size: 0.95rem; font-weight: 600">
+                {{ t('nationalHealthInsurance') }}
+              </h3>
+              <UButtonGroup class="nhi-toggle-group">
+                <UButton
+                  :variant="nhiMode === 'manual' ? 'solid' : 'outline'"
+                  size="sm"
+                  class="nhi-toggle-btn"
+                  @click="nhiMode = 'manual'"
+                  >{{ t('nhiModeManual') }}</UButton
+                >
+                <UButton
+                  :variant="nhiMode === 'auto' ? 'solid' : 'outline'"
+                  size="sm"
+                  class="nhi-toggle-btn"
+                  @click="nhiMode = 'auto'"
+                  >{{ t('nhiModeAuto') }}</UButton
+                >
+                <UButton
+                  :variant="nhiMode === 'municipality' ? 'solid' : 'outline'"
+                  size="sm"
+                  class="nhi-toggle-btn"
+                  :disabled="!municipalityAutoAvailable"
+                  @click="nhiMode = 'municipality'"
+                  >{{ t('nhiModeCity') }}</UButton
+                >
+              </UButtonGroup>
+
+              <template v-if="nhiMode === 'manual'">
+                <label class="deduction-input-label" style="margin-top: 0.5rem">{{
+                  t('nhiTotalAmount')
+                }}</label>
+                <YenInputNumber v-model="nhiManualAmount" :min="0" :step="1000" />
+              </template>
+
+              <template v-else-if="nhiMode === 'auto'">
+                <label class="deduction-input-label" style="margin-top: 0.5rem">{{
+                  t('nhiKintowari')
+                }}</label>
+                <YenInputNumber v-model="nhiKintowari" :min="0" :step="100" />
+                <label class="deduction-input-label" style="margin-top: 0.5rem">{{
+                  t('nhiShotokuwari')
+                }}</label>
+                <UInput type="number" v-model.number="nhiShotokuwariRate" :min="0" :step="0.01">
+                  <template #trailing><span class="text-sm text-muted">%</span></template>
+                </UInput>
+              </template>
+
+              <template v-else-if="nhiMode === 'municipality' && municipalityNhiBreakdown">
+                <div class="nhi-municipality-breakdown">
+                  <div
+                    v-if="municipalityNhiBreakdown.reduction > 0"
+                    class="nhi-breakdown-row nhi-breakdown-reduction"
+                  >
+                    <span>{{ t('nhiPerCapitaReduction') }}</span>
+                    <span
+                      >{{ municipalityNhiBreakdown.reduction * 100 }}%
+                      {{ t('nhiReductionOff') }}</span
+                    >
+                  </div>
+                  <div class="nhi-breakdown-row">
+                    <span>{{ t('nhiMedical') }}</span>
+                    <span>¥{{ municipalityNhiBreakdown.medical.toLocaleString() }}</span>
+                  </div>
+                  <div class="nhi-breakdown-row">
+                    <span>{{ t('nhiSupport') }}</span>
+                    <span>¥{{ municipalityNhiBreakdown.support.toLocaleString() }}</span>
+                  </div>
+                  <div class="nhi-breakdown-row" v-if="ageGroup === '40to64'">
+                    <span>{{ t('nhiLongTermCare') }}</span>
+                    <span>¥{{ municipalityNhiBreakdown.kaigo.toLocaleString() }}</span>
+                  </div>
+                  <div class="nhi-breakdown-row">
+                    <span>{{ t('nhiChildSupport') }}</span>
+                    <span>¥{{ municipalityNhiBreakdown.kodomo.toLocaleString() }}</span>
+                  </div>
+                  <div class="nhi-breakdown-row nhi-breakdown-total">
+                    <span>{{ t('nhiTotal') }}</span>
+                    <span>¥{{ municipalityNhiBreakdown.total.toLocaleString() }}</span>
+                  </div>
                 </div>
               </template>
-              <div class="input-group" style="margin: 0">
-                <label>{{ t('dependentAge') }}</label>
-                <UInput type="number" v-model.number="dep.age" :min="0" :max="120" :step="1" />
+            </div>
+
+            <template v-if="enrolledEmployeeSI">
+              <UButton
+                variant="ghost"
+                size="sm"
+                class="settings-toggle-btn"
+                :icon="showAdvancedOptions ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
+                :label="showAdvancedOptions ? t('hideSettings') : t('showSettings')"
+                @click="showAdvancedOptions = !showAdvancedOptions"
+                style="margin-top: 0.5rem"
+              />
+
+              <div v-show="showAdvancedOptions" class="advanced-options-panel">
+                <div class="input-group">
+                  <label>{{ t('unionSelect') }}</label>
+                  <USelect
+                    v-model="selectedKenpo"
+                    :items="kenpoItems"
+                    class="styled-select"
+                    @update:model-value="handleKenpoChange"
+                  />
+                </div>
+
+                <div class="input-group">
+                  <label>{{ t('customHealth') }}</label>
+                  <UInput type="number" v-model.number="customHealthRate" :min="0" :step="0.01">
+                    <template #trailing><span class="text-sm text-muted">%</span></template>
+                  </UInput>
+                </div>
+
+                <div class="input-group">
+                  <label>{{ t('customKaigo') }}</label>
+                  <UInput type="number" v-model.number="customKaigoRate" :min="0" :step="0.01">
+                    <template #trailing><span class="text-sm text-muted">%</span></template>
+                  </UInput>
+                </div>
+
+                <div class="input-group">
+                  <label>{{ t('customPension') }}</label>
+                  <UInput type="number" v-model.number="customPensionRate" :min="0" :step="0.01">
+                    <template #trailing><span class="text-sm text-muted">%</span></template>
+                  </UInput>
+                </div>
+
+                <div class="input-group">
+                  <label>{{ t('employmentInsIndustry') }}</label>
+                  <USelect
+                    v-model="selectedIndustry"
+                    :items="industryItems"
+                    class="styled-select"
+                    @update:model-value="handleIndustryChange"
+                  />
+                </div>
+
+                <div class="input-group">
+                  <label>{{ t('customEmploymentIns') }}</label>
+                  <UInput
+                    type="number"
+                    v-model.number="customEmploymentInsRate"
+                    :min="0"
+                    :step="0.01"
+                  >
+                    <template #trailing><span class="text-sm text-muted">%</span></template>
+                  </UInput>
+                </div>
               </div>
-            </UCard>
+            </template>
           </div>
 
-          <div style="margin-top: 0.75rem">
-            <UButton variant="outline" size="sm" class="outline-btn" @click="addDependent">{{
-              t('addDependent')
-            }}</UButton>
+          <div
+            v-if="hasSpouseOrDependents"
+            class="input-section"
+            style="margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid #eaeaea"
+          >
+            <h2>{{ t('spouseAndDependents') }}</h2>
+
+            <div class="si-toggle" style="margin-bottom: 1rem">
+              <USwitch v-model="hasSpouse" />
+              <span>{{ t('hasSpouse') }}</span>
+            </div>
+
+            <div class="input-group" v-if="hasSpouse">
+              <label>{{ t('spouseAnnualIncome') }}</label>
+              <YenInputNumber v-model="spouseAnnualIncome" :min="0" :step="10000" />
+            </div>
+            <div class="input-group" v-if="hasSpouse">
+              <label>{{ t('spouseAge') }}</label>
+              <UInput type="number" v-model.number="spouseAge" :min="0" :max="120" :step="1" />
+            </div>
+
+            <div class="card-list" v-if="dependents.length > 0" style="margin-top: 0.75rem">
+              <UCard
+                v-for="dep in dependents"
+                :key="dep.id"
+                :ui="{ header: 'py-2 px-3 bg-gray-50', body: 'p-3' }"
+              >
+                <template #header>
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm font-semibold">{{ t('dependent') }}</span>
+                    <UButton
+                      variant="ghost"
+                      size="xs"
+                      color="error"
+                      class="remove-btn"
+                      icon="i-lucide-x"
+                      @click="removeDependent(dep.id)"
+                      :title="t('removeIncome')"
+                    />
+                  </div>
+                </template>
+                <div class="input-group" style="margin: 0">
+                  <label>{{ t('dependentAge') }}</label>
+                  <UInput type="number" v-model.number="dep.age" :min="0" :max="120" :step="1" />
+                </div>
+              </UCard>
+            </div>
+
+            <div style="margin-top: 0.75rem">
+              <UButton variant="outline" size="sm" class="outline-btn" @click="addDependent">{{
+                t('addDependent')
+              }}</UButton>
+            </div>
           </div>
+
+          <IncomeSection />
+
+          <DeductionSection @open-wizard="openHomeLoanWizard" @edit-wizard="openHomeLoanEdit" />
         </div>
 
-        <IncomeSection />
+        <!-- Output Panel -->
+        <div class="panel results-panel">
+          <div class="results-card">
+            <h2>{{ t('annualBreakdown') }}</h2>
 
-        <DeductionSection
-          @open-wizard="editingHomeLoanId = null; showHomeLoanWizard = true"
-          @edit-wizard="openHomeLoanEdit"
-        />
+            <div class="result-row total-gross">
+              <span>{{ t('grossIncome') }}</span>
+              <span>{{ formatCurrency(results.annualGross) }}</span>
+            </div>
+            <div class="result-row deduction sub-item">
+              <span>└ {{ t('employmentIncomeDeduction') }}</span>
+              <span>- {{ formatCurrency(results.employmentIncomeDeduction) }}</span>
+            </div>
+            <div class="result-row sub-item employment-income-row">
+              <span>= {{ t('employmentIncome') }}</span>
+              <span>{{ formatCurrency(results.employmentIncome) }}</span>
+            </div>
+            <div class="result-row sub-item" v-if="results.businessIncome > 0">
+              <span>+ {{ t('businessIncomeName') }}</span>
+              <span>{{ formatCurrency(results.businessIncome) }}</span>
+            </div>
 
-      </div>
+            <div class="divider"></div>
 
-      <!-- Output Panel -->
-      <div class="panel results-panel">
-        <div class="results-card">
-          <h2>{{ t('annualBreakdown') }}</h2>
-
-          <div class="result-row total-gross">
-            <span>{{ t('grossIncome') }}</span>
-            <span>{{ formatCurrency(results.annualGross) }}</span>
-          </div>
-          <div class="result-row deduction sub-item">
-            <span>└ {{ t('employmentIncomeDeduction') }}</span>
-            <span>- {{ formatCurrency(results.employmentIncomeDeduction) }}</span>
-          </div>
-          <div class="result-row sub-item employment-income-row">
-            <span>= {{ t('employmentIncome') }}</span>
-            <span>{{ formatCurrency(results.employmentIncome) }}</span>
-          </div>
-          <div class="result-row sub-item" v-if="results.businessIncome > 0">
-            <span>+ {{ t('businessIncomeName') }}</span>
-            <span>{{ formatCurrency(results.businessIncome) }}</span>
-          </div>
-
-          <div class="divider"></div>
-
-          <!-- Single SI workplace -->
-          <template v-if="!hasMultipleSiEntries">
-            <div
-              class="result-row deduction social-insurance-row"
-              v-if="results.healthInsurance > 0"
-            >
-              <span
-                >{{ t('healthIns') }}
-                <small class="bracket-info"
-                  >{{ t('gradeString') }} {{ results.healthBracket }} ({{
-                    formatCurrency(results.healthStandardRemuneration)
-                  }})</small
-                ></span
+            <!-- Single SI workplace -->
+            <template v-if="!hasMultipleSiEntries">
+              <div
+                class="result-row deduction social-insurance-row"
+                v-if="results.healthInsurance > 0"
               >
-              <span class="social-ins-value">- {{ formatCurrency(results.healthInsurance) }}</span>
-            </div>
-            <div
-              class="result-row deduction social-insurance-row"
-              v-if="results.kaigoInsurance > 0"
-            >
-              <span>{{ t('nursingCare') }}</span>
-              <span class="social-ins-value">- {{ formatCurrency(results.kaigoInsurance) }}</span>
-            </div>
-            <div class="result-row deduction social-insurance-row" v-if="results.pension > 0">
-              <span
-                >{{ t('pension') }}
-                <small class="bracket-info"
-                  >{{ t('gradeString') }} {{ results.pensionBracket }} ({{
-                    formatCurrency(results.pensionStandardRemuneration)
-                  }})</small
-                ></span
-              >
-              <span class="social-ins-value">- {{ formatCurrency(results.pension) }}</span>
-            </div>
-          </template>
-
-          <!-- Multiple SI workplaces -->
-          <template v-else>
-            <template v-for="si in siBreakdown" :key="si.entryId + '-health'">
-              <div class="result-row deduction social-insurance-row" v-if="si.annualHealth > 0">
                 <span
                   >{{ t('healthIns') }}
                   <small class="bracket-info"
-                    >{{ si.label }} — {{ t('gradeString') }} {{ si.healthBracket }} ({{
-                      formatCurrency(si.healthStandardRemuneration)
+                    >{{ t('gradeString') }} {{ results.healthBracket }} ({{
+                      formatCurrency(results.healthStandardRemuneration)
                     }})</small
                   ></span
                 >
-                <span class="social-ins-value">- {{ formatCurrency(si.annualHealth) }}</span>
-              </div>
-              <div class="result-row deduction social-insurance-row" v-if="si.annualKaigo > 0">
-                <span
-                  >{{ t('nursingCare') }} <small class="bracket-info">{{ si.label }}</small></span
+                <span class="social-ins-value"
+                  >- {{ formatCurrency(results.healthInsurance) }}</span
                 >
-                <span class="social-ins-value">- {{ formatCurrency(si.annualKaigo) }}</span>
               </div>
-              <div class="result-row deduction social-insurance-row" v-if="si.annualPension > 0">
+              <div
+                class="result-row deduction social-insurance-row"
+                v-if="results.kaigoInsurance > 0"
+              >
+                <span>{{ t('nursingCare') }}</span>
+                <span class="social-ins-value">- {{ formatCurrency(results.kaigoInsurance) }}</span>
+              </div>
+              <div class="result-row deduction social-insurance-row" v-if="results.pension > 0">
                 <span
                   >{{ t('pension') }}
                   <small class="bracket-info"
-                    >{{ si.label }} — {{ t('gradeString') }} {{ si.pensionBracket }} ({{
-                      formatCurrency(si.pensionStandardRemuneration)
+                    >{{ t('gradeString') }} {{ results.pensionBracket }} ({{
+                      formatCurrency(results.pensionStandardRemuneration)
                     }})</small
                   ></span
                 >
-                <span class="social-ins-value">- {{ formatCurrency(si.annualPension) }}</span>
+                <span class="social-ins-value">- {{ formatCurrency(results.pension) }}</span>
               </div>
             </template>
-          </template>
 
-          <!-- National Pension (when not in 厚生年金) -->
-          <div class="result-row deduction social-insurance-row" v-if="!enrolledEmployeeSI">
-            <span>
-              {{ t('nationalPension') }}
-              <span v-if="pensionResult.exemptionTier !== 'none'" class="pension-exemption-badge">
-                {{
-                  pensionResult.exemptionTier === 'full'
-                    ? t('pensionFullExemption')
-                    : t('pensionPartialExemption', { tier: pensionResult.exemptionTier })
-                }}
+            <!-- Multiple SI workplaces -->
+            <template v-else>
+              <template v-for="si in siBreakdown" :key="si.entryId + '-health'">
+                <div class="result-row deduction social-insurance-row" v-if="si.annualHealth > 0">
+                  <span
+                    >{{ t('healthIns') }}
+                    <small class="bracket-info"
+                      >{{ si.label }} — {{ t('gradeString') }} {{ si.healthBracket }} ({{
+                        formatCurrency(si.healthStandardRemuneration)
+                      }})</small
+                    ></span
+                  >
+                  <span class="social-ins-value">- {{ formatCurrency(si.annualHealth) }}</span>
+                </div>
+                <div class="result-row deduction social-insurance-row" v-if="si.annualKaigo > 0">
+                  <span
+                    >{{ t('nursingCare') }} <small class="bracket-info">{{ si.label }}</small></span
+                  >
+                  <span class="social-ins-value">- {{ formatCurrency(si.annualKaigo) }}</span>
+                </div>
+                <div class="result-row deduction social-insurance-row" v-if="si.annualPension > 0">
+                  <span
+                    >{{ t('pension') }}
+                    <small class="bracket-info"
+                      >{{ si.label }} — {{ t('gradeString') }} {{ si.pensionBracket }} ({{
+                        formatCurrency(si.pensionStandardRemuneration)
+                      }})</small
+                    ></span
+                  >
+                  <span class="social-ins-value">- {{ formatCurrency(si.annualPension) }}</span>
+                </div>
+              </template>
+            </template>
+
+            <!-- National Pension (when not in 厚生年金) -->
+            <div class="result-row deduction social-insurance-row" v-if="!enrolledEmployeeSI">
+              <span>
+                {{ t('nationalPension') }}
+                <span v-if="pensionResult.exemptionTier !== 'none'" class="pension-exemption-badge">
+                  {{
+                    pensionResult.exemptionTier === 'full'
+                      ? t('pensionFullExemption')
+                      : t('pensionPartialExemption', { tier: pensionResult.exemptionTier })
+                  }}
+                </span>
               </span>
-            </span>
-            <span class="social-ins-value">- {{ formatCurrency(results.nationalPension) }}</span>
-          </div>
+              <span class="social-ins-value">- {{ formatCurrency(results.nationalPension) }}</span>
+            </div>
 
-          <div
-            class="result-row deduction social-insurance-row"
-            v-if="results.nationalHealthInsurance > 0"
-          >
-            <span>{{ t('nationalHealthInsurance') }}</span>
-            <span class="social-ins-value"
-              >- {{ formatCurrency(results.nationalHealthInsurance) }}</span
+            <div
+              class="result-row deduction social-insurance-row"
+              v-if="results.nationalHealthInsurance > 0"
             >
-          </div>
+              <span>{{ t('nationalHealthInsurance') }}</span>
+              <span class="social-ins-value"
+                >- {{ formatCurrency(results.nationalHealthInsurance) }}</span
+              >
+            </div>
 
-          <div
-            class="result-row deduction social-insurance-row"
-            v-if="results.employmentInsurance > 0"
-          >
-            <span>{{ t('employmentIns') }}</span>
-            <span class="social-ins-value"
-              >- {{ formatCurrency(results.employmentInsurance) }}</span
+            <div
+              class="result-row deduction social-insurance-row"
+              v-if="results.employmentInsurance > 0"
             >
-          </div>
-          <div class="result-row deduction">
-            <span>{{ t('basicExemption') }}</span>
-            <span>- {{ formatCurrency(results.basicExemption) }}</span>
-          </div>
+              <span>{{ t('employmentIns') }}</span>
+              <span class="social-ins-value"
+                >- {{ formatCurrency(results.employmentInsurance) }}</span
+              >
+            </div>
+            <div class="result-row deduction">
+              <span>{{ t('basicExemption') }}</span>
+              <span>- {{ formatCurrency(results.basicExemption) }}</span>
+            </div>
 
-          <div v-if="autoSpouseDeduction > 0" class="result-row deduction user-deduction-row">
-            <span>{{ locale === 'ja' ? DEDUCTION_DEFS['spouse'].nameJa : DEDUCTION_DEFS['spouse'].nameEn }}</span>
-            <span>- {{ formatCurrency(autoSpouseDeduction) }}</span>
-          </div>
-          <div v-if="autoDependentDeductions.generalAmount > 0" class="result-row deduction user-deduction-row">
-            <span>{{ locale === 'ja' ? DEDUCTION_DEFS['dependent_general'].nameJa : DEDUCTION_DEFS['dependent_general'].nameEn }}</span>
-            <span>- {{ formatCurrency(autoDependentDeductions.generalAmount) }}</span>
-          </div>
-          <div v-if="autoDependentDeductions.specifiedAmount > 0" class="result-row deduction user-deduction-row">
-            <span>{{ locale === 'ja' ? DEDUCTION_DEFS['dependent_specified'].nameJa : DEDUCTION_DEFS['dependent_specified'].nameEn }}</span>
-            <span>- {{ formatCurrency(autoDependentDeductions.specifiedAmount) }}</span>
-          </div>
-          <div v-if="autoDependentDeductions.agedAmount > 0" class="result-row deduction user-deduction-row">
-            <span>{{ locale === 'ja' ? DEDUCTION_DEFS['dependent_aged'].nameJa : DEDUCTION_DEFS['dependent_aged'].nameEn }}</span>
-            <span>- {{ formatCurrency(autoDependentDeductions.agedAmount) }}</span>
-          </div>
+            <div v-if="autoSpouseDeduction > 0" class="result-row deduction user-deduction-row">
+              <span>{{
+                locale === 'ja' ? DEDUCTION_DEFS['spouse'].nameJa : DEDUCTION_DEFS['spouse'].nameEn
+              }}</span>
+              <span>- {{ formatCurrency(autoSpouseDeduction) }}</span>
+            </div>
+            <div
+              v-if="autoDependentDeductions.generalAmount > 0"
+              class="result-row deduction user-deduction-row"
+            >
+              <span>{{
+                locale === 'ja'
+                  ? DEDUCTION_DEFS['dependent_general'].nameJa
+                  : DEDUCTION_DEFS['dependent_general'].nameEn
+              }}</span>
+              <span>- {{ formatCurrency(autoDependentDeductions.generalAmount) }}</span>
+            </div>
+            <div
+              v-if="autoDependentDeductions.specifiedAmount > 0"
+              class="result-row deduction user-deduction-row"
+            >
+              <span>{{
+                locale === 'ja'
+                  ? DEDUCTION_DEFS['dependent_specified'].nameJa
+                  : DEDUCTION_DEFS['dependent_specified'].nameEn
+              }}</span>
+              <span>- {{ formatCurrency(autoDependentDeductions.specifiedAmount) }}</span>
+            </div>
+            <div
+              v-if="autoDependentDeductions.agedAmount > 0"
+              class="result-row deduction user-deduction-row"
+            >
+              <span>{{
+                locale === 'ja'
+                  ? DEDUCTION_DEFS['dependent_aged'].nameJa
+                  : DEDUCTION_DEFS['dependent_aged'].nameEn
+              }}</span>
+              <span>- {{ formatCurrency(autoDependentDeductions.agedAmount) }}</span>
+            </div>
 
-          <template v-if="deductionEntries.length > 0">
-            <template v-for="entry in deductionEntries" :key="entry.id">
+            <template v-if="deductionEntries.length > 0">
+              <template v-for="entry in deductionEntries" :key="entry.id">
+                <div
+                  v-if="!DEDUCTION_DEFS[entry.type].isTaxCredit"
+                  class="result-row deduction user-deduction-row"
+                >
+                  <span>
+                    {{
+                      locale === 'ja'
+                        ? DEDUCTION_DEFS[entry.type].nameJa
+                        : DEDUCTION_DEFS[entry.type].nameEn
+                    }}
+                  </span>
+                  <span>- {{ formatCurrency(deductionAmountFor(entry)) }}</span>
+                </div>
+              </template>
+            </template>
+
+            <div class="divider"></div>
+
+            <div class="result-row taxable-income-row">
+              <span>
+                {{ t('taxableIncome') }}
+              </span>
+              <span class="taxable-income-value">{{ formatCurrency(results.taxableIncome) }}</span>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="result-row deduction">
+              <span>
+                {{ t('incomeTax') }}
+                <span
+                  class="bracket-info marginal-rate-badge"
+                  :title="t('marginalRateSurtax') + ': ' + results.effectiveMarginalRate + '%'"
+                >
+                  {{ results.marginalRate }}%
+                  <span class="marginal-surtax">({{ results.effectiveMarginalRate }}%)</span>
+                </span>
+              </span>
+              <span>- {{ formatCurrency(results.incomeTax) }}</span>
+            </div>
+            <div
+              class="result-row deduction sub-item furusato-credit-row"
+              v-if="results.furusatoIncomeTaxCredit > 0"
+            >
+              <span>✓ {{ t('furusatoIncomeTaxCredit') }}</span>
+              <span class="furusato-credit-value"
+                >+ {{ formatCurrency(results.furusatoIncomeTaxCredit) }}</span
+              >
+            </div>
+            <div
+              class="result-row deduction sub-item home-loan-credit-row"
+              v-if="results.homeLoanIncomeTaxCredit > 0"
+            >
+              <span>✓ {{ t('homeLoanIncomeTaxCredit') }}</span>
+              <span class="home-loan-credit-value"
+                >+ {{ formatCurrency(results.homeLoanIncomeTaxCredit) }}</span
+              >
+            </div>
+
+            <div class="result-row deduction">
+              <span>{{ t('residentTax') }}</span>
+              <span>- {{ formatCurrency(results.residentTax) }}</span>
+            </div>
+            <div
+              class="result-row deduction sub-item furusato-credit-row"
+              v-if="results.furusatoResidentTaxCredit > 0"
+            >
+              <span>✓ {{ t('furusatoResidentTaxCredit') }}</span>
+              <span class="furusato-credit-value"
+                >+ {{ formatCurrency(results.furusatoResidentTaxCredit) }}</span
+              >
+            </div>
+            <div
+              class="result-row deduction sub-item home-loan-credit-row"
+              v-if="results.homeLoanResidentTaxCredit > 0"
+            >
+              <span>✓ {{ t('homeLoanResidentTaxCredit') }}</span>
+              <span class="home-loan-credit-value"
+                >+ {{ formatCurrency(results.homeLoanResidentTaxCredit) }}</span
+              >
+            </div>
+            <div class="result-row deduction sub-item">
+              <span>└ {{ t('residentPref') }}</span>
+              <span>- {{ formatCurrency(results.residentTaxPrefectural) }}</span>
+            </div>
+            <div class="result-row deduction sub-item">
+              <span>└ {{ t('residentMuni') }}</span>
+              <span>- {{ formatCurrency(results.residentTaxMunicipal) }}</span>
+            </div>
+
+            <div class="result-row total-deductions">
+              <span>{{ t('totalDeductions') }}</span>
+              <span>- {{ formatCurrency(results.totalDeductions) }}</span>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="result-row net-pay highlight">
+              <span>{{ t('netPay') }}</span>
+              <span class="net-value">{{ formatCurrency(results.netPay) }}</span>
+            </div>
+
+            <template v-if="totalCashCost > 0">
               <div
-                v-if="!DEDUCTION_DEFS[entry.type].isTaxCredit"
-                class="result-row deduction user-deduction-row"
+                class="result-row deduction cash-cost-row"
+                v-for="entry in cashCostEntries"
+                :key="'cc-' + entry.id"
               >
                 <span>
                   {{
@@ -695,228 +835,136 @@ const pieSlices = computed((): PieSlice[] => {
                       ? DEDUCTION_DEFS[entry.type].nameJa
                       : DEDUCTION_DEFS[entry.type].nameEn
                   }}
+                  <small class="cash-cost-tag">{{ t('cashCostContributions') }}</small>
                 </span>
-                <span>- {{ formatCurrency(deductionAmountFor(entry)) }}</span>
+                <span>- {{ formatCurrency(getCashCost(entry, idecoMonthlyLimit)) }}</span>
+              </div>
+
+              <div class="divider"></div>
+
+              <div class="result-row disposable-income-row">
+                <span>
+                  {{ t('disposableIncome') }}
+                  <small class="taxable-income-sub">{{ t('disposableIncomeSub') }}</small>
+                </span>
+                <span class="net-value">{{ formatCurrency(results.netPay - totalCashCost) }}</span>
               </div>
             </template>
-          </template>
 
-          <div class="divider"></div>
-
-          <div class="result-row taxable-income-row">
-            <span>
-              {{ t('taxableIncome') }}
-            </span>
-            <span class="taxable-income-value">{{ formatCurrency(results.taxableIncome) }}</span>
-          </div>
-
-          <div class="divider"></div>
-
-          <div class="result-row deduction">
-            <span>
-              {{ t('incomeTax') }}
-              <span
-                class="bracket-info marginal-rate-badge"
-                :title="t('marginalRateSurtax') + ': ' + results.effectiveMarginalRate + '%'"
+            <div class="estimated-monthly">
+              {{ t('monthlyPay') }}:
+              <strong>{{
+                formatCurrency(
+                  hasSalaryIncome
+                    ? results.monthlyNet - totalCashCost / 12
+                    : (results.netPay - totalCashCost) / 12,
+                )
+              }}</strong>
+              <br />
+              <span v-if="hasSalaryIncome && results.annualGross - results.monthlyNet * 12 > 0"
+                >{{ t('bonusPay') }}: <strong>{{ formatCurrency(results.bonusNet) }}</strong></span
               >
-                {{ results.marginalRate }}%
-                <span class="marginal-surtax">({{ results.effectiveMarginalRate }}%)</span>
-              </span>
-            </span>
-            <span>- {{ formatCurrency(results.incomeTax) }}</span>
+            </div>
           </div>
-          <div
-            class="result-row deduction sub-item furusato-credit-row"
-            v-if="results.furusatoIncomeTaxCredit > 0"
-          >
-            <span>✓ {{ t('furusatoIncomeTaxCredit') }}</span>
-            <span class="furusato-credit-value"
-              >+ {{ formatCurrency(results.furusatoIncomeTaxCredit) }}</span
-            >
-          </div>
-          <div
-            class="result-row deduction sub-item home-loan-credit-row"
-            v-if="results.homeLoanIncomeTaxCredit > 0"
-          >
-            <span>✓ {{ t('homeLoanIncomeTaxCredit') }}</span>
-            <span class="home-loan-credit-value"
-              >+ {{ formatCurrency(results.homeLoanIncomeTaxCredit) }}</span
-            >
-          </div>
+        </div>
 
-          <div class="result-row deduction">
-            <span>{{ t('residentTax') }}</span>
-            <span>- {{ formatCurrency(results.residentTax) }}</span>
-          </div>
-          <div
-            class="result-row deduction sub-item furusato-credit-row"
-            v-if="results.furusatoResidentTaxCredit > 0"
-          >
-            <span>✓ {{ t('furusatoResidentTaxCredit') }}</span>
-            <span class="furusato-credit-value"
-              >+ {{ formatCurrency(results.furusatoResidentTaxCredit) }}</span
+        <!-- Home Loan Wizard Modal -->
+        <HomeLoanWizard
+          v-if="showHomeLoanWizard"
+          :initial="
+            editingHomeLoanId
+              ? (deductionEntries.find((e) => e.id === editingHomeLoanId)?.homeLoanParams ?? null)
+              : null
+          "
+          @confirm="handleHomeLoanConfirm"
+          @cancel="closeHomeLoanWizard"
+        />
+
+        <!-- Visualization Panel -->
+        <div class="panel viz-panel">
+          <h2 class="viz-title">{{ t('vizTitle') }}</h2>
+          <p class="viz-sub">{{ t('vizSubtitle') }}</p>
+          <div class="flex flex-col gap-8 w-full">
+            <DonutChart
+              :slices="pieSlices"
+              :center-label="formatCurrency(results.annualGross)"
+              :center-sub="t('vizGross')"
+            />
+
+            <!-- iDeCo Tax-Saving Tip -->
+            <UCard
+              v-if="!hasIdecoDeduction && idecoSavings"
+              :ui="{ header: 'py-2 px-3', body: 'p-3' }"
             >
-          </div>
-          <div
-            class="result-row deduction sub-item home-loan-credit-row"
-            v-if="results.homeLoanResidentTaxCredit > 0"
-          >
-            <span>✓ {{ t('homeLoanResidentTaxCredit') }}</span>
-            <span class="home-loan-credit-value"
-              >+ {{ formatCurrency(results.homeLoanResidentTaxCredit) }}</span
-            >
-          </div>
-          <div class="result-row deduction sub-item">
-            <span>└ {{ t('residentPref') }}</span>
-            <span>- {{ formatCurrency(results.residentTaxPrefectural) }}</span>
-          </div>
-          <div class="result-row deduction sub-item">
-            <span>└ {{ t('residentMuni') }}</span>
-            <span>- {{ formatCurrency(results.residentTaxMunicipal) }}</span>
-          </div>
-
-          <div class="result-row total-deductions">
-            <span>{{ t('totalDeductions') }}</span>
-            <span>- {{ formatCurrency(results.totalDeductions) }}</span>
-          </div>
-
-          <div class="divider"></div>
-
-          <div class="result-row net-pay highlight">
-            <span>{{ t('netPay') }}</span>
-            <span class="net-value">{{ formatCurrency(results.netPay) }}</span>
-          </div>
-
-          <template v-if="totalCashCost > 0">
-            <div
-              class="result-row deduction cash-cost-row"
-              v-for="entry in cashCostEntries"
-              :key="'cc-' + entry.id"
-            >
-              <span>
+              <template #header>
+                <div class="flex items-center gap-1.5">
+                  <span>💡</span>
+                  <span class="text-sm font-semibold text-amber-800">{{ t('idecoTipTitle') }}</span>
+                </div>
+              </template>
+              <p class="text-xs text-amber-700 mb-3 leading-snug">
                 {{
-                  locale === 'ja'
-                    ? DEDUCTION_DEFS[entry.type].nameJa
-                    : DEDUCTION_DEFS[entry.type].nameEn
+                  t('idecoTipDesc', {
+                    monthly: formatCurrency(idecoMonthlyLimit),
+                    annual: formatCurrency(idecoMonthlyLimit * 12),
+                  })
                 }}
-                <small class="cash-cost-tag">{{ t('cashCostContributions') }}</small>
-              </span>
-              <span>- {{ formatCurrency(getCashCost(entry, idecoMonthlyLimit)) }}</span>
-            </div>
-
-            <div class="divider"></div>
-
-            <div class="result-row disposable-income-row">
-              <span>
-                {{ t('disposableIncome') }}
-                <small class="taxable-income-sub">{{ t('disposableIncomeSub') }}</small>
-              </span>
-              <span class="net-value">{{ formatCurrency(results.netPay - totalCashCost) }}</span>
-            </div>
-          </template>
-
-          <div class="estimated-monthly">
-            {{ t('monthlyPay') }}:
-            <strong>{{
-              formatCurrency(
-                hasSalaryIncome
-                  ? results.monthlyNet - totalCashCost / 12
-                  : (results.netPay - totalCashCost) / 12,
-              )
-            }}</strong>
-            <br />
-            <span v-if="hasSalaryIncome && results.annualGross - results.monthlyNet * 12 > 0"
-              >{{ t('bonusPay') }}: <strong>{{ formatCurrency(results.bonusNet) }}</strong></span
-            >
+              </p>
+              <table class="ideco-tip-table">
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>{{ t('idecoTipCurrent') }}</th>
+                    <th>{{ t('idecoTipWithIdeco') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>{{ t('idecoTipIncomeTax') }}</td>
+                    <td>{{ formatCurrency(results.incomeTax) }}</td>
+                    <td class="col-with-ideco">
+                      {{ formatCurrency(resultsWithMaxIdeco?.incomeTax ?? 0) }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>{{ t('idecoTipResidentTax') }}</td>
+                    <td>{{ formatCurrency(results.residentTax) }}</td>
+                    <td class="col-with-ideco">
+                      {{ formatCurrency(resultsWithMaxIdeco?.residentTax ?? 0) }}
+                    </td>
+                  </tr>
+                  <tr class="ideco-tip-savings-row">
+                    <td>{{ t('idecoTipSavings') }}</td>
+                    <td></td>
+                    <td class="ideco-tip-savings-amount">
+                      {{ formatCurrency(idecoSavings.total) }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </UCard>
           </div>
         </div>
-      </div>
-
-      <!-- Home Loan Wizard Modal -->
-      <HomeLoanWizard
-        v-if="showHomeLoanWizard"
-        :initial="
-          editingHomeLoanId
-            ? (deductionEntries.find((e) => e.id === editingHomeLoanId)?.homeLoanParams ?? null)
-            : null
-        "
-        @confirm="handleHomeLoanConfirm"
-        @cancel="showHomeLoanWizard = false; editingHomeLoanId = null"
-      />
-
-      <!-- Visualization Panel -->
-      <div class="panel viz-panel">
-        <h2 class="viz-title">{{ t('vizTitle') }}</h2>
-        <p class="viz-sub">{{ t('vizSubtitle') }}</p>
-        <div class="flex flex-col gap-8 w-full">
-          <DonutChart
-            :slices="pieSlices"
-            :center-label="formatCurrency(results.annualGross)"
-            :center-sub="t('vizGross')"
-          />
-
-          <!-- iDeCo Tax-Saving Tip -->
-          <UCard
-            v-if="!hasIdecoDeduction && idecoSavings"
-            :ui="{ header: 'py-2 px-3', body: 'p-3' }"
-          >
-          <template #header>
-            <div class="flex items-center gap-1.5">
-              <span>💡</span>
-              <span class="text-sm font-semibold text-amber-800">{{ t('idecoTipTitle') }}</span>
-            </div>
-          </template>
-          <p class="text-xs text-amber-700 mb-3 leading-snug">
-            {{
-              t('idecoTipDesc', {
-                monthly: formatCurrency(idecoMonthlyLimit),
-                annual: formatCurrency(idecoMonthlyLimit * 12),
-              })
-            }}
-          </p>
-          <table class="ideco-tip-table">
-            <thead>
-              <tr>
-                <th></th>
-                <th>{{ t('idecoTipCurrent') }}</th>
-                <th>{{ t('idecoTipWithIdeco') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>{{ t('idecoTipIncomeTax') }}</td>
-                <td>{{ formatCurrency(results.incomeTax) }}</td>
-                <td class="col-with-ideco">{{ formatCurrency(resultsWithMaxIdeco?.incomeTax ?? 0) }}</td>
-              </tr>
-              <tr>
-                <td>{{ t('idecoTipResidentTax') }}</td>
-                <td>{{ formatCurrency(results.residentTax) }}</td>
-                <td class="col-with-ideco">{{ formatCurrency(resultsWithMaxIdeco?.residentTax ?? 0) }}</td>
-              </tr>
-              <tr class="ideco-tip-savings-row">
-                <td>{{ t('idecoTipSavings') }}</td>
-                <td></td>
-                <td class="ideco-tip-savings-amount">{{ formatCurrency(idecoSavings.total) }}</td>
-              </tr>
-            </tbody>
-          </table>
-          </UCard>
-        </div>
-      </div>
-
       </UPageGrid>
     </UContainer>
-  <UFooter
-    class="sticky bottom-0 border-t border-gray-200 bg-white/85 backdrop-blur-sm"
-    :ui="{ top: 'text-center text-xs text-gray-400 space-y-0.5', container: 'hidden' }"
-  >
-    <template #top>
-      <div style="padding: 0.75rem 0;">
-        <div>&copy; 2026 Xuanrui Qi</div>
-        <div><a href="https://github.com/xuanruiqi/japan-tax-calculator" target="_blank" rel="noopener noreferrer">github.com/xuanruiqi/japan-tax-calculator</a></div>
-      </div>
-    </template>
-  </UFooter>
+    <UFooter
+      class="sticky bottom-0 border-t border-gray-200 bg-white/85 backdrop-blur-sm"
+      :ui="{ top: 'text-center text-xs text-gray-400 space-y-0.5', container: 'hidden' }"
+    >
+      <template #top>
+        <div style="padding: 0.75rem 0">
+          <div>&copy; 2026 Xuanrui Qi</div>
+          <div>
+            <a
+              href="https://github.com/xuanruiqi/japan-tax-calculator"
+              target="_blank"
+              rel="noopener noreferrer"
+              >github.com/xuanruiqi/japan-tax-calculator</a
+            >
+          </div>
+        </div>
+      </template>
+    </UFooter>
   </UApp>
 </template>
 

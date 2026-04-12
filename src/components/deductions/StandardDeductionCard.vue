@@ -5,6 +5,7 @@ import type { MessageSchema } from '../../locales'
 import { type DeductionEntry, DEDUCTION_DEFS } from '../../data/deductions'
 import { useTaxStore } from '../../stores/tax'
 import DeductionCardBase from './DeductionCardBase.vue'
+import YenInputNumber from '../YenInputNumber.vue'
 
 interface Props {
   entry: DeductionEntry
@@ -46,12 +47,10 @@ const formatCurrency = (value: number) =>
 <template>
   <DeductionCardBase :name="name" @remove="emit('remove')">
     <label class="deduction-input-label">{{ inputLabel }}</label>
-    <!-- eslint-disable-next-line vue/no-mutating-props -->
-    <UInput type="number" v-model.number="entry.value" :min="0" :step="isCount ? 1 : 1000">
-      <template #leading v-if="!isCount"
-        ><span class="text-base text-muted font-medium">¥</span></template
-      >
-    </UInput>
+    <!-- eslint-disable vue/no-mutating-props -->
+    <UInput v-if="isCount" type="number" v-model.number="entry.value" :min="0" :step="1" />
+    <YenInputNumber v-else v-model="entry.value" :min="0" :step="1000" />
+    <!-- eslint-enable vue/no-mutating-props -->
     <div class="deduction-computed">
       <span class="deduction-computed-label">{{ t('deductionAmount') }}</span>
       <span class="deduction-computed-value">{{ formatCurrency(deductionAmount) }}</span>
