@@ -14,7 +14,7 @@ You may safely assume that a development server is running at `http://localhost:
 - **TypeScript 6.0** (strict mode, `noUncheckedIndexedAccess`)
 - **Vite 8** (base path: `/japan-tax-calculator/`)
 - **Nuxt UI 4** + **TailwindCSS 4** for UI components and styling
-- **Pinia** + **Vue Router** (present but mostly unused — state lives in App.vue)
+- **Pinia** + **Vue Router** — Pinia used for all app state (`src/stores/tax.ts`)
 - **Yarn 4** (via Corepack) as package manager
 
 ## Commands
@@ -24,16 +24,19 @@ yarn dev          # Dev server at http://localhost:5173/japan-tax-calculator/
 yarn build        # Type-check + build to dist/
 yarn build-only   # Build without type-check
 yarn preview      # Preview production build
-yarn lint         # Run oxlint + eslint (both with --fix)
+yarn lint:oxlint  # Run oxlint
+yarn lint:eslint  # Run ESLint (Vue rules)
 yarn format       # Prettier over src/
 yarn type-check   # vue-tsc --build
 ```
 
 ## Code Structure
 
-```
+```plaintext
 src/
-  App.vue                  # Main component — all app state lives here (~87KB)
+  App.vue                  # Main component — i18n, UI state, presentation computeds
+  stores/
+    tax.ts                 # Pinia store — all app state, business logic, persistence
   components/
     DonutChart.vue          # SVG donut chart with tooltips
     HomeLoanWizard.vue      # 4-step wizard for home loan tax credit
@@ -45,7 +48,10 @@ src/
     taxCalculation.ts       # Core tax/insurance/deduction logic (pure functions)
     nhiCalculation.ts       # NHI (国民健康保険) per municipality
     kokunenCalculation.ts   # National Pension exemption tiers
-  locales/index.ts          # EN/JA translation strings (no i18n framework)
+  locales/
+    index.ts                # vue-i18n instance (legacy: false)
+    en.ts                   # English messages
+    ja.ts                   # Japanese messages
 ```
 
 ## Key Conventions
@@ -53,7 +59,8 @@ src/
 - **Pure calculation functions** — all tax logic in `utils/` is side-effect free. Keep it that way.
 - **Customizability and extensibility** — data-driven design allows for easy updates as tax laws change. Avoid hardcoding logic; instead, add new rules or rates to the relevant data files. Especially, new NHI calculation rules should be added to `nhiCalculation.ts` as new functions. All tax deduction rules should be added to `deductions.ts` as new entries in `DEDUCTION_DEFS`.
 - **Data-driven deductions** — deduction types are string union types; metadata lives in `DEDUCTION_DEFS`. Add new deduction types there, not ad hoc.
-- **i18n by object lookup** — translations are in `locales/index.ts`. All user-facing strings go through the `t` computed property.
+- **i18n via vue-i18n** — translations are in `locales/en.ts` and `locales/ja.ts`. All user-facing strings go through `t()` from `useI18n()`. Array messages use `tm()`.
+- **State in Pinia** — all user-input state, derived computations, internal watches, and localStorage persistence live in `src/stores/tax.ts`. App.vue holds only i18n, ephemeral UI state, and presentation-level computed properties that depend on `t()`.
 - **No backend, no API calls** — all data is statutory and hardcoded in `data/`. Do not add network requests.
 - **TypeScript interfaces for all data shapes** — use interface-based types for new calculation results.
 

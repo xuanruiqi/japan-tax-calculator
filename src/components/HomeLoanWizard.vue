@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import type { HomeLoanParams, HomeLoanHouseType } from '../data/homeLoan';
 import {
   HOME_LOAN_HOUSE_TYPES,
@@ -7,11 +8,12 @@ import {
   getAvailableHouseTypes,
   calculateHomeLoanCredit,
 } from '../data/homeLoan';
-import type { LocaleStrings } from '../locales';
+import type { MessageSchema } from '../locales';
+
+const { t, locale: _locale } = useI18n<{ message: MessageSchema }>();
+const locale = computed(() => _locale.value as 'en' | 'ja');
 
 const props = defineProps<{
-  t: LocaleStrings;
-  locale: 'en' | 'ja';
   initial?: HomeLoanParams | null;
 }>();
 
@@ -64,7 +66,7 @@ const formatJPY = (v: number) =>
 const houseTypeName = (type: HomeLoanHouseType) => {
   const def = HOME_LOAN_HOUSE_TYPES.find(h => h.type === type);
   if (!def) return type;
-  return props.locale === 'ja' ? def.nameJa : def.nameEn;
+  return locale.value === 'ja' ? def.nameJa : def.nameEn;
 };
 
 const nextStep = () => { if (step.value < 4) step.value++; };
@@ -84,14 +86,14 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' };
 
       <!-- Header -->
       <div class="wizard-header">
-        <h3>{{ t.homeLoanWizardTitle }}</h3>
+        <h3>{{ t('homeLoanWizardTitle') }}</h3>
         <UButton variant="ghost" size="xs" class="remove-btn" icon="i-lucide-x" @click="emit('cancel')" />
       </div>
 
       <!-- Step indicators -->
       <div class="wizard-steps">
         <div
-          v-for="(label, i) in [t.homeLoanStepMoveIn, t.homeLoanStepHouseType, t.homeLoanStepLoanDetails, t.homeLoanStepConfirm]"
+          v-for="(label, i) in [t('homeLoanStepMoveIn'), t('homeLoanStepHouseType'), t('homeLoanStepLoanDetails'), t('homeLoanStepConfirm')]"
           :key="i"
           class="wizard-step-indicator"
           :class="{ active: step === i + 1, completed: step > i + 1 }"
@@ -107,7 +109,7 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' };
 
         <!-- Step 1: Move-in Year -->
         <div v-if="step === 1" class="wizard-step-content">
-          <label class="wizard-field-label">{{ t.homeLoanMoveInYear }}</label>
+          <label class="wizard-field-label">{{ t('homeLoanMoveInYear') }}</label>
           <div class="year-grid">
             <UButton
               v-for="year in MOVE_IN_YEARS"
@@ -123,10 +125,10 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' };
 
         <!-- Step 2: House Type -->
         <div v-if="step === 2" class="wizard-step-content">
-          <label class="wizard-field-label">{{ t.homeLoanHouseType }}</label>
+          <label class="wizard-field-label">{{ t('homeLoanHouseType') }}</label>
 
           <div class="type-group" v-if="newTypes.length > 0">
-            <div class="type-group-label">{{ t.homeLoanNewConstruction }}</div>
+            <div class="type-group-label">{{ t('homeLoanNewConstruction') }}</div>
             <UButtonGroup orientation="vertical" class="w-full">
               <UButton
                 v-for="ht in newTypes"
@@ -145,7 +147,7 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' };
           </div>
 
           <div class="type-group" v-if="existingTypes.length > 0">
-            <div class="type-group-label">{{ t.homeLoanExistingHousing }}</div>
+            <div class="type-group-label">{{ t('homeLoanExistingHousing') }}</div>
             <UButtonGroup orientation="vertical" class="w-full">
               <UButton
                 v-for="ht in existingTypes"
@@ -165,15 +167,15 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' };
 
           <div class="type-info" v-if="limits.maxBalance > 0">
             <div class="info-row">
-              <span>{{ t.homeLoanMaxBalance }}</span>
+              <span>{{ t('homeLoanMaxBalance') }}</span>
               <span>{{ formatJPY(limits.maxBalance) }}</span>
             </div>
             <div class="info-row">
-              <span>{{ t.homeLoanMaxYears }}</span>
-              <span>{{ limits.years }}{{ locale === 'ja' ? '年間' : ' years' }}</span>
+              <span>{{ t('homeLoanMaxYears') }}</span>
+              <span>{{ limits.years }}{{ t('yearsUnit') }}</span>
             </div>
             <div class="info-row">
-              <span>{{ t.homeLoanCreditRate }}</span>
+              <span>{{ t('homeLoanCreditRate') }}</span>
               <span>0.7%</span>
             </div>
           </div>
@@ -182,28 +184,28 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' };
         <!-- Step 3: Loan Details -->
         <div v-if="step === 3" class="wizard-step-content">
           <div class="wizard-input-group">
-            <label class="wizard-field-label">{{ t.homeLoanYearEndBalance }}</label>
+            <label class="wizard-field-label">{{ t('homeLoanYearEndBalance') }}</label>
             <UInput type="number" v-model.number="yearEndBalance" :min="0" :max="limits.maxBalance" :step="100000">
               <template #leading><span class="text-base font-medium text-muted">¥</span></template>
             </UInput>
-            <small class="wizard-hint">{{ t.homeLoanMaxBalance }}: {{ formatJPY(limits.maxBalance) }}</small>
+            <small class="wizard-hint">{{ t('homeLoanMaxBalance') }}: {{ formatJPY(limits.maxBalance) }}</small>
           </div>
 
           <div class="wizard-input-group">
-            <label class="wizard-field-label">{{ t.homeLoanDeductionYear }}</label>
+            <label class="wizard-field-label">{{ t('homeLoanDeductionYear') }}</label>
             <div class="deduction-year-wrap">
               <UInput type="number" v-model.number="deductionYear" :min="1" :max="maxDeductionYear" :step="1">
                 <template #trailing v-if="locale === 'ja'">
-                  <span class="text-sm text-muted">{{ t.homeLoanDeductionYearSuffix }}</span>
+                  <span class="text-sm text-muted">{{ t('homeLoanDeductionYearSuffix') }}</span>
                 </template>
               </UInput>
             </div>
-            <small class="wizard-hint">{{ t.homeLoanMaxYears }}: {{ maxDeductionYear }}{{ locale === 'ja' ? '年間' : ' years' }}</small>
-            <small class="wizard-warning" v-if="exceedsPeriod">{{ t.homeLoanExceedsPeriod }}</small>
+            <small class="wizard-hint">{{ t('homeLoanMaxYears') }}: {{ maxDeductionYear }}{{ t('yearsUnit') }}</small>
+            <small class="wizard-warning" v-if="exceedsPeriod">{{ t('homeLoanExceedsPeriod') }}</small>
           </div>
 
           <div class="credit-preview" v-if="yearEndBalance > 0 && !exceedsPeriod">
-            <span>{{ t.homeLoanEstimatedCredit }}</span>
+            <span>{{ t('homeLoanEstimatedCredit') }}</span>
             <span class="credit-amount">{{ formatJPY(estimatedCredit) }}</span>
           </div>
         </div>
@@ -212,28 +214,28 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' };
         <div v-if="step === 4" class="wizard-step-content">
           <div class="confirm-summary">
             <div class="confirm-row">
-              <span>{{ t.homeLoanMoveInYear }}</span>
+              <span>{{ t('homeLoanMoveInYear') }}</span>
               <span>{{ moveInYear }}</span>
             </div>
             <div class="confirm-row">
-              <span>{{ t.homeLoanHouseType }}</span>
+              <span>{{ t('homeLoanHouseType') }}</span>
               <span>{{ houseTypeName(houseType) }}</span>
             </div>
             <div class="confirm-row">
-              <span>{{ t.homeLoanYearEndBalance }}</span>
+              <span>{{ t('homeLoanYearEndBalance') }}</span>
               <span>{{ formatJPY(yearEndBalance) }}</span>
             </div>
             <div class="confirm-row">
-              <span>{{ t.homeLoanDeductionYear }}</span>
-              <span>{{ deductionYear }}{{ t.homeLoanDeductionYearSuffix }}</span>
+              <span>{{ t('homeLoanDeductionYear') }}</span>
+              <span>{{ deductionYear }}{{ t('homeLoanDeductionYearSuffix') }}</span>
             </div>
             <div class="confirm-row">
-              <span>{{ t.homeLoanMaxBalance }}</span>
+              <span>{{ t('homeLoanMaxBalance') }}</span>
               <span>{{ formatJPY(limits.maxBalance) }}</span>
             </div>
             <div class="confirm-divider"></div>
             <div class="confirm-row highlight">
-              <span>{{ t.homeLoanEstimatedCredit }}</span>
+              <span>{{ t('homeLoanEstimatedCredit') }}</span>
               <span class="credit-amount">{{ formatJPY(estimatedCredit) }}</span>
             </div>
           </div>
@@ -243,11 +245,11 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' };
 
       <!-- Footer -->
       <div class="wizard-footer">
-        <UButton v-if="step > 1"  variant="outline" color="neutral" class="outline-btn" @click="prevStep">{{ t.wizardBack }}</UButton>
-        <UButton v-if="step === 1" variant="outline" color="neutral" class="outline-btn" @click="emit('cancel')">{{ t.wizardCancel }}</UButton>
+        <UButton v-if="step > 1"  variant="outline" color="neutral" class="outline-btn" @click="prevStep">{{ t('wizardBack') }}</UButton>
+        <UButton v-if="step === 1" variant="outline" color="neutral" class="outline-btn" @click="emit('cancel')">{{ t('wizardCancel') }}</UButton>
         <div class="wizard-footer-spacer"></div>
-        <UButton v-if="step < 4" variant="solid" color="neutral" class="solid-btn" @click="nextStep">{{ t.wizardNext }}</UButton>
-        <UButton v-if="step === 4" variant="solid" color="neutral" class="solid-btn" @click="handleConfirm">{{ t.wizardConfirm }}</UButton>
+        <UButton v-if="step < 4" variant="solid" color="neutral" class="solid-btn" @click="nextStep">{{ t('wizardNext') }}</UButton>
+        <UButton v-if="step === 4" variant="solid" color="neutral" class="solid-btn" @click="handleConfirm">{{ t('wizardConfirm') }}</UButton>
       </div>
 
     </div>
