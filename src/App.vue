@@ -5,17 +5,15 @@ import { storeToRefs } from 'pinia'
 import type { MessageSchema } from './locales'
 import { getStandardRemunerationGrade } from './utils/taxCalculation'
 import { PREFECTURES_LIST, PREFECTURE_NAMES, CITY_NAMES } from './data/taxRates'
-import {
-  type DeductionType,
-  DEDUCTION_DEFS,
-  getCashCost,
-} from './data/deductions'
+import { DEDUCTION_DEFS, getCashCost } from './data/deductions'
 import { type HomeLoanParams } from './data/homeLoan'
 import DonutChart, { type PieSlice } from './components/DonutChart.vue'
 import HomeLoanWizard from './components/HomeLoanWizard.vue'
+import IncomeSection from './components/IncomeSection.vue'
+import DeductionSection from './components/DeductionSection.vue'
 import { useTaxStore } from './stores/tax'
 
-const { t, tm, locale: _locale } = useI18n<{ message: MessageSchema }>()
+const { t, locale: _locale } = useI18n<{ message: MessageSchema }>()
 // Wrap in a typed computed so comparisons against 'en' | 'ja' are type-safe
 const locale = computed({
   get: () => _locale.value as 'en' | 'ja',
@@ -27,7 +25,6 @@ watchEffect(() => { document.title = t('title') })
 const store = useTaxStore()
 const {
   incomeEntries,
-  previousYearIncomeInput,
   employmentPrefecture,
   residencePrefecture,
   residenceCity,
@@ -54,10 +51,8 @@ const {
   hasSalaryIncome,
   availableCities,
   idecoMonthlyLimit,
-  availableDeductionTypes,
   autoSpouseDeduction,
   autoDependentDeductions,
-  totalAdditionalDeductions,
   municipalityAutoAvailable,
   pensionResult,
   municipalityNhiBreakdown,
@@ -66,14 +61,7 @@ const {
   results,
 } = storeToRefs(store)
 
-const {
-  addIncomeEntry,
-  removeIncomeEntry,
-  addDependent,
-  removeDependent,
-  removeDeduction,
-  deductionAmountFor,
-} = store
+const { addDependent, removeDependent, deductionAmountFor } = store
 
 // --- UI-only state ---
 const showHomeLoanWizard = ref(false)
@@ -106,34 +94,12 @@ const industryItems = computed(() => [
   { label: t('industryAgriForestry'), value: 'agriForestry' as const },
   { label: t('industryConstruction'), value: 'construction' as const },
 ])
-const incomePickerItems = computed(() => [
-  [
-    { label: t('salaryIncomeName'), onSelect: () => addIncomeEntry('salary') },
-    { label: t('businessIncomeName'), onSelect: () => addIncomeEntry('business') },
-  ],
-])
-const deductionPickerItems = computed(() => [
-  availableDeductionTypes.value.map((type) => ({
-    label: locale.value === 'ja' ? DEDUCTION_DEFS[type].nameJa : DEDUCTION_DEFS[type].nameEn,
-    onSelect: () => addDeduction(type),
-  })),
-])
-
 // --- Event handler aliases (template uses these names) ---
 const handleResidencePrefectureChange = () => store.onResidencePrefectureChange()
 const handleKenpoChange = () => store.onKenpoChange()
 const handleIndustryChange = () => store.onIndustryChange()
 
 // --- Local action wrappers ---
-const addDeduction = (type: DeductionType) => {
-  if (type === 'home_loan') {
-    editingHomeLoanId.value = null
-    showHomeLoanWizard.value = true
-    return
-  }
-  store.pushDeductionEntry(type)
-}
-
 const handleHomeLoanConfirm = (params: HomeLoanParams) => {
   store.confirmHomeLoan(params, editingHomeLoanId.value)
   showHomeLoanWizard.value = false
@@ -543,442 +509,13 @@ const pieSlices = computed((): PieSlice[] => {
           </div>
         </div>
 
-        <div class="input-section">
-          <h2>{{ t('incomeDetails') }}</h2>
+        <IncomeSection />
 
-          <div class="card-list">
-            <UCard
-              v-for="entry in incomeEntries"
-              :key="entry.id"
-              :ui="{ header: 'py-2 px-3 bg-gray-50', body: 'p-3' }"
-            >
-              <template #header>
-                <div class="flex justify-between items-center">
-                  <span class="text-sm font-semibold">
-                    {{ entry.type === 'salary' ? t('salaryIncomeName') : t('businessIncomeName') }}
-                    <small
-                      v-if="entry.type === 'salary' && entry === primarySalaryEntry"
-                      class="bracket-info"
-                      style="margin-left: 0.4rem"
-                      >{{ t('primaryJob') }}</small
-                    >
-                    <UInput
-                      v-model="entry.name"
-                      size="xs"
-                      variant="ghost"
-                      class="name-input inline-block w-28 ml-1"
-                      :placeholder="t('incomeNamePlaceholder')"
-                    />
-                  </span>
-                  <UButton
-                    variant="ghost"
-                    size="xs"
-                    color="error"
-                    class="remove-btn"
-                    icon="i-lucide-x"
-                    @click="removeIncomeEntry(entry.id)"
-                    :title="t('removeIncome')"
-                  />
-                </div>
-              </template>
-              <!-- Salary inputs -->
-              <template v-if="entry.type === 'salary'">
-                <label class="deduction-input-label">{{ t('monthlySalary') }}</label>
-                <UInput type="number" v-model.number="entry.monthlySalary" :min="0" :step="1000">
-                  <template #leading
-                    ><span class="text-base text-muted font-medium">¥</span></template
-                  >
-                </UInput>
-                <label class="deduction-input-label" style="margin-top: 0.5rem">{{
-                  t('annualBonus')
-                }}</label>
-                <UInput type="number" v-model.number="entry.annualBonus" :min="0" :step="1000">
-                  <template #leading
-                    ><span class="text-base text-muted font-medium">¥</span></template
-                  >
-                </UInput>
-                <div
-                  class="si-toggle"
-                  style="margin-top: 0.6rem"
-                  v-if="entry === primarySalaryEntry"
-                >
-                  <USwitch v-model="entry.joinsEmploymentInsurance" />
-                  <span>
-                    {{ t('joinsEmploymentInsurance') }}
-                    <UTooltip
-                      :content="{ side: 'bottom' }"
-                      :ui="{
-                        content:
-                          'h-auto bg-white text-gray-900 border border-gray-200 shadow-lg rounded-lg p-0 max-w-xs',
-                      }"
-                    >
-                      <template #content>
-                        <div
-                          class="text-xs leading-relaxed"
-                          style="padding: 1rem"
-                          v-if="locale === 'ja'"
-                        >
-                          次の<b>(1)および(2)の両方</b>に該当する場合、雇用保険に加入する必要があります。<br /><br />
-                          <b>(1) 31日以上継続して雇用される見込みがあること</b><br />
-                          ・期間の定めなく雇用される場合<br />
-                          ・雇用期間が31日以上の場合<br />
-                          ・契約に更新規定があり、31日未満での雇止め明示がない場合<br /><br />
-                          <b>(2) 1週間の所定労働時間が20時間以上であること</b>
-                        </div>
-                        <div class="text-xs leading-relaxed" style="padding: 1rem" v-else>
-                          Employment insurance is required when <b>both</b> of the following
-                          apply:<br /><br />
-                          <b>(1) Expected to be employed continuously for 31+ days</b><br />
-                          · No fixed term<br />
-                          · Contract of 31+ days<br />
-                          · Contract has renewal clause with no explicit non-renewal before 31
-                          days<br /><br />
-                          <b>(2) Scheduled weekly hours are 20 or more</b>
-                        </div>
-                      </template>
-                      <span
-                        class="inline-flex items-center justify-center w-4 h-4 text-[0.65rem] font-bold text-gray-500 bg-gray-100 rounded-full cursor-help ml-1"
-                        >?</span
-                      >
-                    </UTooltip>
-                  </span>
-                </div>
-                <div class="si-toggle" style="margin-top: 0.6rem">
-                  <USwitch v-model="entry.joinsSocialInsurance" />
-                  <span>
-                    {{ t('joinsSocialInsurance') }}
-                    <UTooltip
-                      :content="{ side: 'bottom' }"
-                      :ui="{
-                        content:
-                          'h-auto bg-white text-gray-900 border border-gray-200 shadow-lg rounded-lg p-0 max-w-xs',
-                      }"
-                    >
-                      <template #content>
-                        <div
-                          class="text-xs leading-relaxed"
-                          style="padding: 1rem"
-                          v-if="locale === 'ja'"
-                        >
-                          以下のいずれかに該当する場合、勤務先の社会保険に加入する必要があります。<br /><br />
-                          <b>① フルタイムの3/4以上</b><br />
-                          正社員の所定労働時間・日数の3/4以上勤務している場合<br /><br />
-                          <b>② 以下の5条件をすべて満たす場合</b><br />
-                          ・週の所定労働時間が20時間以上<br />
-                          ・所定内賃金が月額8.8万円以上（残業代・交通費・ボーナス除く）<br />
-                          ・雇用期間が2ヶ月超の見込み<br />
-                          ・昼間学生でないこと<br />
-                          ・従業員51人以上の企業であること
-                        </div>
-                        <div class="text-xs leading-relaxed" style="padding: 1rem" v-else>
-                          You must enroll in employer social insurance if either of the following
-                          applies:<br /><br />
-                          <b>1. You work 3/4+ of full-time hours and days;</b><br /><br />
-                          <b>2. All five conditions are met:</b><br />
-                          - Weekly working hours: 20+ hours/week<br />
-                          - Monthly wage: ¥88,000+ (base pay only, excl. overtime, commuting,
-                          bonus)<br />
-                          - Employment period: expected to exceed 2 months<br />
-                          - Not a full-time student<br />
-                          - Employer has 51+ employees (pension-insured)
-                        </div>
-                      </template>
-                      <span
-                        class="inline-flex items-center justify-center w-4 h-4 text-[0.65rem] font-bold text-gray-500 bg-gray-100 rounded-full cursor-help ml-1"
-                        >?</span
-                      >
-                    </UTooltip>
-                  </span>
-                </div>
-              </template>
-              <!-- Business inputs -->
-              <template v-else>
-                <label class="deduction-input-label">{{ t('businessRevenue') }}</label>
-                <UInput type="number" v-model.number="entry.revenue" :min="0" :step="1000">
-                  <template #leading
-                    ><span class="text-base text-muted font-medium">¥</span></template
-                  >
-                </UInput>
-                <label class="deduction-input-label" style="margin-top: 0.5rem">{{
-                  t('businessExpenses')
-                }}</label>
-                <UInput type="number" v-model.number="entry.expenses" :min="0" :step="1000">
-                  <template #leading
-                    ><span class="text-base text-muted font-medium">¥</span></template
-                  >
-                </UInput>
-              </template>
-            </UCard>
-          </div>
+        <DeductionSection
+          @open-wizard="editingHomeLoanId = null; showHomeLoanWizard = true"
+          @edit-wizard="openHomeLoanEdit"
+        />
 
-          <div style="margin-top: 0.75rem">
-            <UDropdownMenu :items="incomePickerItems">
-              <UButton variant="outline" size="sm" class="outline-btn" :label="t('addIncome')" />
-            </UDropdownMenu>
-          </div>
-
-          <div class="input-group" style="margin-top: 1rem">
-            <label>{{ t('prevIncome') }}</label>
-            <UInput
-              type="number"
-              v-model.number="previousYearIncomeInput"
-              :min="0"
-              :step="1000"
-              :placeholder="t('prevIncomePlaceholder')"
-            >
-              <template #leading><span class="text-base text-muted font-medium">¥</span></template>
-            </UInput>
-          </div>
-        </div>
-
-        <!-- Deductions Section -->
-        <div class="input-section deductions-section">
-          <div class="deductions-header">
-            <h2>{{ t('deductionsSection') }}</h2>
-            <UDropdownMenu :items="deductionPickerItems">
-              <UButton variant="outline" size="sm" class="outline-btn" :label="t('addDeduction')" />
-            </UDropdownMenu>
-          </div>
-
-          <p class="no-deductions-msg" v-if="deductionEntries.length === 0 && autoSpouseDeduction === 0 && autoDependentDeductions.total === 0">{{ t('noDeductions') }}</p>
-
-          <div class="card-list">
-            <UCard
-              v-if="autoSpouseDeduction > 0"
-              :ui="{ header: 'py-2 px-3 bg-gray-50', body: 'p-3' }"
-            >
-              <template #header>
-                <span class="text-sm font-semibold">{{
-                  locale === 'ja' ? DEDUCTION_DEFS['spouse'].nameJa : DEDUCTION_DEFS['spouse'].nameEn
-                }}</span>
-              </template>
-              <div class="deduction-computed">
-                <span class="deduction-computed-label">{{
-                  locale === 'ja' ? DEDUCTION_DEFS['spouse'].inputLabelJa : DEDUCTION_DEFS['spouse'].inputLabelEn
-                }}</span>
-                <span class="deduction-computed-value">{{ formatCurrency(spouseAnnualIncome ?? 0) }}</span>
-              </div>
-              <div class="deduction-computed">
-                <span class="deduction-computed-label">{{ t('deductionAmountLabel') }}</span>
-                <span class="deduction-computed-value">{{ formatCurrency(autoSpouseDeduction) }}</span>
-              </div>
-              <a class="nta-reference-link" :href="DEDUCTION_DEFS['spouse'].ntaUrl" target="_blank" rel="noopener noreferrer">{{ t('ntaReference') }} ↗</a>
-            </UCard>
-
-            <UCard
-              v-if="autoDependentDeductions.general > 0"
-              :ui="{ header: 'py-2 px-3 bg-gray-50', body: 'p-3' }"
-            >
-              <template #header>
-                <span class="text-sm font-semibold">{{
-                  locale === 'ja' ? DEDUCTION_DEFS['dependent_general'].nameJa : DEDUCTION_DEFS['dependent_general'].nameEn
-                }}</span>
-              </template>
-              <div class="deduction-computed">
-                <span class="deduction-computed-label">{{ t('count') }}</span>
-                <span class="deduction-computed-value">{{ autoDependentDeductions.general }}</span>
-              </div>
-              <div class="deduction-computed">
-                <span class="deduction-computed-label">{{ t('deductionAmountLabel') }}</span>
-                <span class="deduction-computed-value">{{ formatCurrency(autoDependentDeductions.generalAmount) }}</span>
-              </div>
-              <a class="nta-reference-link" :href="DEDUCTION_DEFS['dependent_general'].ntaUrl" target="_blank" rel="noopener noreferrer">{{ t('ntaReference') }} ↗</a>
-            </UCard>
-
-            <UCard
-              v-if="autoDependentDeductions.specified > 0"
-              :ui="{ header: 'py-2 px-3 bg-gray-50', body: 'p-3' }"
-            >
-              <template #header>
-                <span class="text-sm font-semibold">{{
-                  locale === 'ja' ? DEDUCTION_DEFS['dependent_specified'].nameJa : DEDUCTION_DEFS['dependent_specified'].nameEn
-                }}</span>
-              </template>
-              <div class="deduction-computed">
-                <span class="deduction-computed-label">{{ t('count') }}</span>
-                <span class="deduction-computed-value">{{ autoDependentDeductions.specified }}</span>
-              </div>
-              <div class="deduction-computed">
-                <span class="deduction-computed-label">{{ t('deductionAmountLabel') }}</span>
-                <span class="deduction-computed-value">{{ formatCurrency(autoDependentDeductions.specifiedAmount) }}</span>
-              </div>
-              <a class="nta-reference-link" :href="DEDUCTION_DEFS['dependent_specified'].ntaUrl" target="_blank" rel="noopener noreferrer">{{ t('ntaReference') }} ↗</a>
-            </UCard>
-
-            <UCard
-              v-if="autoDependentDeductions.aged > 0"
-              :ui="{ header: 'py-2 px-3 bg-gray-50', body: 'p-3' }"
-            >
-              <template #header>
-                <span class="text-sm font-semibold">{{
-                  locale === 'ja' ? DEDUCTION_DEFS['dependent_aged'].nameJa : DEDUCTION_DEFS['dependent_aged'].nameEn
-                }}</span>
-              </template>
-              <div class="deduction-computed">
-                <span class="deduction-computed-label">{{ t('count') }}</span>
-                <span class="deduction-computed-value">{{ autoDependentDeductions.aged }}</span>
-              </div>
-              <div class="deduction-computed">
-                <span class="deduction-computed-label">{{ t('deductionAmountLabel') }}</span>
-                <span class="deduction-computed-value">{{ formatCurrency(autoDependentDeductions.agedAmount) }}</span>
-              </div>
-              <a class="nta-reference-link" :href="DEDUCTION_DEFS['dependent_aged'].ntaUrl" target="_blank" rel="noopener noreferrer">{{ t('ntaReference') }} ↗</a>
-            </UCard>
-
-            <UCard
-              v-for="entry in deductionEntries.filter(e => e.type !== 'spouse' && e.type !== 'dependent_general' && e.type !== 'dependent_specified' && e.type !== 'dependent_aged')"
-              :key="entry.id"
-              :ui="{ header: 'py-2 px-3 bg-gray-50', body: 'p-3' }"
-            >
-              <template #header>
-                <div class="flex justify-between items-center">
-                  <span class="text-sm font-semibold flex items-center gap-1">
-                    {{
-                      locale === 'ja'
-                        ? DEDUCTION_DEFS[entry.type].nameJa
-                        : DEDUCTION_DEFS[entry.type].nameEn
-                    }}
-                    <UTooltip
-                      v-if="entry.type === 'ideco'"
-                      :content="{ side: 'bottom' }"
-                      :ui="{
-                        content:
-                          'h-auto bg-white text-gray-900 border border-gray-200 shadow-lg rounded-lg p-0',
-                      }"
-                    >
-                      <template #content>
-                        <div style="padding: 1rem; min-width: 220px">
-                          <div style="font-weight: 600; margin-bottom: 0.6rem; font-size: 0.8rem">
-                            {{ t('idecoLimitTooltipTitle') }}
-                          </div>
-                          <div
-                            v-for="row in (tm('idecoLimitTooltipRows') as Array<{label: string; limit: string}>)"
-                            :key="row.label"
-                            style="
-                              display: flex;
-                              justify-content: space-between;
-                              gap: 1.5rem;
-                              font-size: 0.78rem;
-                              padding: 0.2rem 0;
-                              color: #444;
-                            "
-                          >
-                            <span>{{ row.label }}</span>
-                            <span style="font-weight: 600; color: #111; white-space: nowrap">{{
-                              row.limit
-                            }}</span>
-                          </div>
-                        </div>
-                      </template>
-                      <span
-                        class="inline-flex items-center justify-center w-4 h-4 text-[0.65rem] font-bold text-gray-500 bg-gray-100 rounded-full cursor-help"
-                        >?</span
-                      >
-                    </UTooltip>
-                  </span>
-                  <div class="flex items-center gap-1">
-                    <UButton
-                      v-if="entry.type === 'home_loan'"
-                      variant="outline"
-                      size="xs"
-                      class="outline-btn"
-                      :label="t('wizardEdit')"
-                      @click="openHomeLoanEdit(entry.id)"
-                    />
-                    <UButton
-                      variant="ghost"
-                      size="xs"
-                      color="error"
-                      class="remove-btn"
-                      icon="i-lucide-x"
-                      @click="removeDeduction(entry.id)"
-                      :title="t('removeDeduction')"
-                    />
-                  </div>
-                </div>
-              </template>
-
-              <!-- Home loan: show summary instead of input -->
-              <template v-if="entry.type === 'home_loan' && entry.homeLoanParams">
-                <div class="hl-summary-row">
-                  <span>{{ t('homeLoanMoveInYear') }}</span>
-                  <span>{{ entry.homeLoanParams.moveInYear }}</span>
-                </div>
-                <div class="hl-summary-row">
-                  <span>{{ t('homeLoanYearEndBalance') }}</span>
-                  <span>{{ formatCurrency(entry.homeLoanParams.yearEndBalance) }}</span>
-                </div>
-                <div class="hl-summary-row">
-                  <span>{{ t('homeLoanDeductionYear') }}</span>
-                  <span
-                    >{{ entry.homeLoanParams.deductionYear
-                    }}{{ t('homeLoanDeductionYearSuffix') }}</span
-                  >
-                </div>
-                <div class="deduction-computed">
-                  <span class="deduction-computed-label">{{ t('homeLoanEstimatedCredit') }}</span>
-                  <span class="deduction-computed-value">{{ formatCurrency(entry.value) }}</span>
-                </div>
-                <a
-                  v-if="DEDUCTION_DEFS[entry.type].ntaUrl"
-                  class="nta-reference-link"
-                  :href="DEDUCTION_DEFS[entry.type].ntaUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  >{{ t('ntaReference') }} ↗</a
-                >
-              </template>
-
-              <!-- Standard deductions: input field -->
-              <template v-else>
-                <label class="deduction-input-label">
-                  {{
-                    locale === 'ja'
-                      ? DEDUCTION_DEFS[entry.type].inputLabelJa
-                      : DEDUCTION_DEFS[entry.type].inputLabelEn
-                  }}
-                </label>
-                <UInput
-                  type="number"
-                  v-model.number="entry.value"
-                  :min="0"
-                  :step="DEDUCTION_DEFS[entry.type].inputIsCount ? 1 : 1000"
-                >
-                  <template #leading v-if="!DEDUCTION_DEFS[entry.type].inputIsCount"
-                    ><span class="text-base text-muted font-medium">¥</span></template
-                  >
-                </UInput>
-                <div class="deduction-computed">
-                  <span class="deduction-computed-label">{{ t('deductionAmount') }}</span>
-                  <span class="deduction-computed-value">{{
-                    formatCurrency(deductionAmountFor(entry))
-                  }}</span>
-                </div>
-                <a
-                  v-if="entry.type === 'furusato'"
-                  class="furusato-sim-link"
-                  href="https://www.furusato-tax.jp/about/simulation"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  >{{ t('furusatoSimLink') }} ↗</a
-                >
-                <a
-                  v-if="DEDUCTION_DEFS[entry.type].ntaUrl"
-                  class="nta-reference-link"
-                  :href="DEDUCTION_DEFS[entry.type].ntaUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  >{{ t('ntaReference') }} ↗</a
-                >
-              </template>
-            </UCard>
-          </div>
-
-          <div class="deduction-total" v-if="deductionEntries.length > 0">
-            <span>{{ t('totalAdditionalDeductions') }}</span>
-            <span>{{ formatCurrency(totalAdditionalDeductions) }}</span>
-          </div>
-        </div>
       </div>
 
       <!-- Output Panel -->

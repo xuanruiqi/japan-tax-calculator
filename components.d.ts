@@ -12,10 +12,20 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AutoDeductionCard: typeof import('./src/components/AutoDeductionCard.vue')['default']
+    DeductionCard: typeof import('./src/components/deductions/DeductionCard.vue')['default']
+    DeductionCardBase: typeof import('./src/components/deductions/DeductionCardBase.vue')['default']
+    DeductionSection: typeof import('./src/components/DeductionSection.vue')['default']
+    DependentDeductionCard: typeof import('./src/components/deductions/DependentDeductionCard.vue')['default']
     DonutChart: typeof import('./src/components/DonutChart.vue')['default']
+    HomeLoanDeductionCard: typeof import('./src/components/deductions/HomeLoanDeductionCard.vue')['default']
     HomeLoanWizard: typeof import('./src/components/HomeLoanWizard.vue')['default']
+    IdecoDeductionCard: typeof import('./src/components/deductions/IdecoDeductionCard.vue')['default']
+    IncomeSection: typeof import('./src/components/IncomeSection.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SpouseDeductionCard: typeof import('./src/components/deductions/SpouseDeductionCard.vue')['default']
+    StandardDeductionCard: typeof import('./src/components/deductions/StandardDeductionCard.vue')['default']
     UApp: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/App.vue')['default']
     UButton: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Button.vue')['default']
     UCard: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Card.vue')['default']
@@ -33,10 +43,20 @@ declare module 'vue' {
 
 // For TSX support
 declare global {
+  const AutoDeductionCard: typeof import('./src/components/AutoDeductionCard.vue')['default']
+  const DeductionCard: typeof import('./src/components/deductions/DeductionCard.vue')['default']
+  const DeductionCardBase: typeof import('./src/components/deductions/DeductionCardBase.vue')['default']
+  const DeductionSection: typeof import('./src/components/DeductionSection.vue')['default']
+  const DependentDeductionCard: typeof import('./src/components/deductions/DependentDeductionCard.vue')['default']
   const DonutChart: typeof import('./src/components/DonutChart.vue')['default']
+  const HomeLoanDeductionCard: typeof import('./src/components/deductions/HomeLoanDeductionCard.vue')['default']
   const HomeLoanWizard: typeof import('./src/components/HomeLoanWizard.vue')['default']
+  const IdecoDeductionCard: typeof import('./src/components/deductions/IdecoDeductionCard.vue')['default']
+  const IncomeSection: typeof import('./src/components/IncomeSection.vue')['default']
   const RouterLink: typeof import('vue-router')['RouterLink']
   const RouterView: typeof import('vue-router')['RouterView']
+  const SpouseDeductionCard: typeof import('./src/components/deductions/SpouseDeductionCard.vue')['default']
+  const StandardDeductionCard: typeof import('./src/components/deductions/StandardDeductionCard.vue')['default']
   const UApp: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/App.vue')['default']
   const UButton: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Button.vue')['default']
   const UCard: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Card.vue')['default']
