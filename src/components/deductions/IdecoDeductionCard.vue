@@ -33,6 +33,13 @@ const ntaUrl = DEDUCTION_DEFS['ideco'].ntaUrl
 
 const deductionAmount = computed(() => store.deductionAmountFor(props.entry))
 
+const isOverLimit = computed(() => (props.entry.value ?? 0) > store.idecoMonthlyLimit)
+
+const overLimitWarning = computed(() => {
+  const limitFormatted = new Intl.NumberFormat('ja-JP').format(store.idecoMonthlyLimit)
+  return t('idecoOverLimitWarning', { limit: limitFormatted })
+})
+
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(value)
 </script>
@@ -79,9 +86,12 @@ const formatCurrency = (value: number) =>
     </template>
 
     <label class="deduction-input-label">{{ inputLabel }}</label>
-    <UInput type="number" v-model.number="entry.value" :min="0" :step="1000">
-      <template #leading><span class="text-base text-muted font-medium">¥</span></template>
-    </UInput>
+    <UFormField :error="isOverLimit ? overLimitWarning : undefined">
+      <!-- eslint-disable-next-line vue/no-mutating-props -->
+      <UInput type="number" v-model.number="entry.value" :min="0" :step="1000" class="w-full">
+        <template #leading><span class="text-base text-muted font-medium">¥</span></template>
+      </UInput>
+    </UFormField>
     <div class="deduction-computed">
       <span class="deduction-computed-label">{{ t('deductionAmount') }}</span>
       <span class="deduction-computed-value">{{ formatCurrency(deductionAmount) }}</span>

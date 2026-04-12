@@ -54,6 +54,9 @@ div[data-slot="root"]:has(> input[data-slot="base"]) {
 div[data-slot="root"]:has(> input[data-slot="base"]):focus-within {
   border-color: #111 !important;
 }
+div[data-slot="root"]:has(> input[data-slot="base"].ring-error) {
+  border-color: var(--color-error) !important;
+}
 
 /* UInput base element — padding & font-size */
 div[data-slot="root"] > input[data-slot="base"] {

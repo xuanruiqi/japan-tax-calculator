@@ -46,6 +46,7 @@ const formatCurrency = (value: number) =>
 <template>
   <DeductionCardBase :name="name" @remove="emit('remove')">
     <label class="deduction-input-label">{{ inputLabel }}</label>
+    <!-- eslint-disable-next-line vue/no-mutating-props -->
     <UInput type="number" v-model.number="entry.value" :min="0" :step="isCount ? 1 : 1000">
       <template #leading v-if="!isCount"
         ><span class="text-base text-muted font-medium">¥</span></template

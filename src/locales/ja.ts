@@ -129,6 +129,7 @@ export default {
     { label: '公務員', limit: '20,000円' },
     { label: '専業主婦・主夫（第3号）', limit: '23,000円' },
   ],
+  idecoOverLimitWarning: '月額掛金の上限は{limit}円です。上限を超える掛金は拠出できません。',
 
   // Inline strings migrated to i18n
   reset: 'リセット',

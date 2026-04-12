@@ -138,6 +138,7 @@ export default {
     { label: 'Civil servant', limit: '¥20,000' },
     { label: 'Homemaker (Daisan-go)', limit: '¥23,000' },
   ],
+  idecoOverLimitWarning: 'Your monthly contribution limit is ¥{limit}. Contributions above this amount are not permitted.',
 
   // Inline strings migrated to i18n
   reset: 'Reset',
