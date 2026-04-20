@@ -133,6 +133,8 @@ export default {
 
   // Inline strings migrated to i18n
   reset: 'リセット',
+  themeLight: 'ライト',
+  themeDark: 'ダーク',
   spouseAndDependents: '配偶者・被扶養者',
   spouseAge: '配偶者の年齢',
   dependentAge: '年齢',
@@ -164,7 +166,8 @@ export default {
 
   // iDeCo tax-saving tip
   idecoTipTitle: 'iDeCoで節税しよう',
-  idecoTipDesc: '月額{monthly}円（年間{annual}円）をiDeCoに拠出することで、課税所得を抑えることができます。',
+  idecoTipDesc:
+    '月額{monthly}円（年間{annual}円）をiDeCoに拠出することで、課税所得を抑えることができます。',
   idecoTipCurrent: '現在',
   idecoTipWithIdeco: 'iDeCo最大拠出',
   idecoTipIncomeTax: '所得税',

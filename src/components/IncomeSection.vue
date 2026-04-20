@@ -189,6 +189,11 @@ h2 {
   letter-spacing: 0.05em;
 }
 
+:global(.theme-dark) h2,
+:global(html.dark) h2 {
+  color: #f8fafc;
+}
+
 .card-list {
   display: flex;
   flex-direction: column;
@@ -202,12 +207,22 @@ h2 {
   margin-bottom: 0.35rem;
 }
 
+:global(.theme-dark) .deduction-input-label,
+:global(html.dark) .deduction-input-label {
+  color: #e2e8f0;
+}
+
 .si-toggle {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   font-size: 0.8rem;
   color: #555;
+}
+
+:global(.theme-dark) .si-toggle,
+:global(html.dark) .si-toggle {
+  color: #e2e8f0;
 }
 
 .bracket-info {
@@ -222,6 +237,12 @@ h2 {
   vertical-align: middle;
 }
 
+:global(.theme-dark) .bracket-info,
+:global(html.dark) .bracket-info {
+  background-color: #1e293b;
+  color: #f8fafc;
+}
+
 .input-group {
   margin-bottom: 1.5rem;
 }
@@ -232,5 +253,10 @@ h2 {
   font-weight: 500;
   color: #333;
   margin-bottom: 0.4rem;
+}
+
+:global(.theme-dark) .input-group label,
+:global(html.dark) .input-group label {
+  color: #f8fafc;
 }
 </style>

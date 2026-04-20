@@ -87,7 +87,15 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' }
 </script>
 
 <template>
-  <UModal :open="true" @update:open="(val: boolean) => !val && emit('cancel')">
+  <UModal
+    :open="true"
+    :ui="{
+      content:
+        'home-loan-modal bg-white border border-gray-200 shadow-2xl rounded-xl',
+      overlay: 'bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm',
+    }"
+    @update:open="(val: boolean) => !val && emit('cancel')"
+  >
     <template #content>
       <div class="wizard-dialog">
         <!-- Header -->
@@ -133,7 +141,7 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' }
                 :variant="moveInYear === year ? 'solid' : 'outline'"
                 color="neutral"
                 block
-                :class="moveInYear === year ? 'solid-btn' : 'outline-btn'"
+                :class="moveInYear === year ? 'solid-btn wizard-solid-btn' : 'outline-btn wizard-outline-btn'"
                 @click="moveInYear = year"
                 >{{ year }}</UButton
               >
@@ -153,7 +161,11 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' }
                   :variant="houseType === ht.type ? 'solid' : 'outline'"
                   color="neutral"
                   block
-                  :class="houseType === ht.type ? 'solid-btn' : 'outline-btn'"
+                  :class="
+                    houseType === ht.type
+                      ? 'solid-btn wizard-solid-btn'
+                      : 'outline-btn wizard-outline-btn'
+                  "
                   :ui="typeTileUi"
                   @click="houseType = ht.type"
                 >
@@ -172,7 +184,11 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' }
                   :variant="houseType === ht.type ? 'solid' : 'outline'"
                   color="neutral"
                   block
-                  :class="houseType === ht.type ? 'solid-btn' : 'outline-btn'"
+                  :class="
+                    houseType === ht.type
+                      ? 'solid-btn wizard-solid-btn'
+                      : 'outline-btn wizard-outline-btn'
+                  "
                   :ui="typeTileUi"
                   @click="houseType = ht.type"
                 >
@@ -280,7 +296,7 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' }
             v-if="step > 1"
             variant="outline"
             color="neutral"
-            class="outline-btn"
+            class="outline-btn wizard-outline-btn"
             @click="prevStep"
             >{{ t('wizardBack') }}</UButton
           >
@@ -288,7 +304,7 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' }
             v-if="step === 1"
             variant="outline"
             color="neutral"
-            class="outline-btn"
+            class="outline-btn wizard-outline-btn"
             @click="emit('cancel')"
             >{{ t('wizardCancel') }}</UButton
           >
@@ -297,7 +313,7 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' }
             v-if="step < 4"
             variant="solid"
             color="neutral"
-            class="solid-btn"
+            class="solid-btn wizard-solid-btn"
             @click="nextStep"
             >{{ t('wizardNext') }}</UButton
           >
@@ -305,7 +321,7 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' }
             v-if="step === 4"
             variant="solid"
             color="neutral"
-            class="solid-btn"
+            class="solid-btn wizard-solid-btn"
             @click="handleConfirm"
             >{{ t('wizardConfirm') }}</UButton
           >
@@ -328,6 +344,16 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' }
   flex-direction: column;
 }
 
+:global(.theme-dark) .wizard-dialog,
+:global(html.dark) .wizard-dialog,
+:global(html[data-theme='dark']) .wizard-dialog,
+:global(body.dark-mode) .wizard-dialog {
+  background: #0f172a;
+  border: 1px solid #243244;
+  box-shadow: 0 18px 56px rgba(2, 6, 23, 0.55);
+  color: #f1f5f9;
+}
+
 .wizard-header {
   display: flex;
   justify-content: space-between;
@@ -336,11 +362,29 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' }
   border-bottom: 1px solid #eaeaea;
 }
 
+:global(.theme-dark) .wizard-header,
+:global(html.dark) .wizard-header,
+:global(html[data-theme='dark']) .wizard-header,
+:global(body.dark-mode) .wizard-header {
+  border-bottom-color: #243244;
+}
+
 .wizard-header h3 {
   margin: 0;
   font-size: 1.1rem;
   font-weight: 600;
-  color: #111;
+  color: var(--text-primary);
+}
+
+:global(.theme-dark) .wizard-dialog,
+:global(html.dark) .wizard-dialog,
+:global(html[data-theme='dark']) .wizard-dialog,
+:global(body.dark-mode) .wizard-dialog,
+:global(.theme-dark) .wizard-body,
+:global(html.dark) .wizard-body,
+:global(html[data-theme='dark']) .wizard-body,
+:global(body.dark-mode) .wizard-body {
+  color: #f8fafc;
 }
 
 /* Step indicators */
@@ -349,6 +393,13 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' }
   padding: 1rem 1.5rem;
   gap: 0.25rem;
   border-bottom: 1px solid #f0f0f0;
+}
+
+:global(.theme-dark) .wizard-steps,
+:global(html.dark) .wizard-steps,
+:global(html[data-theme='dark']) .wizard-steps,
+:global(body.dark-mode) .wizard-steps {
+  border-bottom-color: #1e293b;
 }
 
 .wizard-step-indicator {
@@ -365,10 +416,25 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' }
     background 0.2s;
 }
 
+:global(.theme-dark) .wizard-step-indicator,
+:global(html.dark) .wizard-step-indicator,
+:global(html[data-theme='dark']) .wizard-step-indicator,
+:global(body.dark-mode) .wizard-step-indicator {
+  color: #cbd5e1;
+}
+
 .wizard-step-indicator.active {
   color: #111;
   background: #f5f5f5;
   font-weight: 600;
+}
+
+:global(.theme-dark) .wizard-step-indicator.active,
+:global(html.dark) .wizard-step-indicator.active,
+:global(html[data-theme='dark']) .wizard-step-indicator.active,
+:global(body.dark-mode) .wizard-step-indicator.active {
+  color: #f8fafc;
+  background: #1e293b;
 }
 
 .wizard-step-indicator.completed {
@@ -376,8 +442,22 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' }
   cursor: pointer;
 }
 
+:global(.theme-dark) .wizard-step-indicator.completed,
+:global(html.dark) .wizard-step-indicator.completed,
+:global(html[data-theme='dark']) .wizard-step-indicator.completed,
+:global(body.dark-mode) .wizard-step-indicator.completed {
+  color: #fcd34d;
+}
+
 .wizard-step-indicator.completed:hover {
   background: #f0faf5;
+}
+
+:global(.theme-dark) .wizard-step-indicator.completed:hover,
+:global(html.dark) .wizard-step-indicator.completed:hover,
+:global(html[data-theme='dark']) .wizard-step-indicator.completed:hover,
+:global(body.dark-mode) .wizard-step-indicator.completed:hover {
+  background: rgba(245, 158, 11, 0.16);
 }
 
 .step-number {
@@ -394,14 +474,38 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' }
   flex-shrink: 0;
 }
 
+:global(.theme-dark) .step-number,
+:global(html.dark) .step-number,
+:global(html[data-theme='dark']) .step-number,
+:global(body.dark-mode) .step-number {
+  background: #243244;
+  color: #e2e8f0;
+}
+
 .wizard-step-indicator.active .step-number {
   background: #111;
   color: #fff;
 }
 
+:global(.theme-dark) .wizard-step-indicator.active .step-number,
+:global(html.dark) .wizard-step-indicator.active .step-number,
+:global(html[data-theme='dark']) .wizard-step-indicator.active .step-number,
+:global(body.dark-mode) .wizard-step-indicator.active .step-number {
+  background: #f8fafc;
+  color: #020617;
+}
+
 .wizard-step-indicator.completed .step-number {
   background: #1a6b50;
   color: #fff;
+}
+
+:global(.theme-dark) .wizard-step-indicator.completed .step-number,
+:global(html.dark) .wizard-step-indicator.completed .step-number,
+:global(html[data-theme='dark']) .wizard-step-indicator.completed .step-number,
+:global(body.dark-mode) .wizard-step-indicator.completed .step-number {
+  background: #f59e0b;
+  color: #1f2937;
 }
 
 .step-label {
@@ -436,7 +540,7 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' }
   display: block;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 0.75rem;
 }
 
@@ -455,7 +559,7 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' }
 .type-group-label {
   font-size: 0.78rem;
   font-weight: 600;
-  color: #888;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin-bottom: 0.5rem;
@@ -474,22 +578,22 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' }
 .type-info {
   margin-top: 0.75rem;
   padding: 0.75rem;
-  background: #f8f9fa;
+  background: var(--card-bg);
   border-radius: 8px;
-  border: 1px solid #eee;
+  border: 1px solid var(--card-border);
 }
 
 .info-row {
   display: flex;
   justify-content: space-between;
   font-size: 0.82rem;
-  color: #555;
+  color: var(--text-secondary);
   padding: 0.25rem 0;
 }
 
 .info-row span:last-child {
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
 }
 
 /* ── Loan inputs ─────────────────────────────────── */
@@ -504,7 +608,7 @@ const typeTileUi = { label: 'w-full text-left flex flex-col gap-0.5 py-0.5' }
 .wizard-hint {
   display: block;
   font-size: 0.78rem;
-  color: #999;
+  color: var(--text-muted);
   margin-top: 0.3rem;
 }
 
@@ -537,18 +641,34 @@ input[type='number'] {
   color: #333;
 }
 
+:global(.theme-dark) .credit-preview,
+:global(html.dark) .credit-preview,
+:global(html[data-theme='dark']) .credit-preview,
+:global(body.dark-mode) .credit-preview {
+  background: rgba(59, 130, 246, 0.18);
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  color: #f8fafc;
+}
+
 .credit-amount {
   font-weight: 700;
   font-size: 1.05rem;
   color: #3b5bdb;
 }
 
+:global(.theme-dark) .credit-amount,
+:global(html.dark) .credit-amount,
+:global(html[data-theme='dark']) .credit-amount,
+:global(body.dark-mode) .credit-amount {
+  color: #dbeafe;
+}
+
 /* ── Confirmation ────────────────────────────────── */
 .confirm-summary {
-  background: #f8f9fa;
+  background: var(--card-bg);
   border-radius: 8px;
   padding: 1rem;
-  border: 1px solid #eee;
+  border: 1px solid var(--card-border);
 }
 
 .confirm-row {
@@ -556,17 +676,17 @@ input[type='number'] {
   justify-content: space-between;
   padding: 0.5rem 0;
   font-size: 0.88rem;
-  color: #555;
+  color: var(--text-secondary);
 }
 
 .confirm-row span:last-child {
   font-weight: 600;
-  color: #222;
+  color: var(--text-primary);
 }
 
 .confirm-row.highlight {
   font-size: 1rem;
-  color: #111;
+  color: var(--text-primary);
 }
 
 .confirm-row.highlight .credit-amount {
@@ -575,7 +695,7 @@ input[type='number'] {
 
 .confirm-divider {
   height: 1px;
-  background: #e0e0e0;
+  background: var(--border-soft);
   margin: 0.5rem 0;
 }
 
@@ -586,6 +706,13 @@ input[type='number'] {
   padding: 1rem 1.5rem;
   border-top: 1px solid #eaeaea;
   gap: 0.75rem;
+}
+
+:global(.theme-dark) .wizard-footer,
+:global(html.dark) .wizard-footer,
+:global(html[data-theme='dark']) .wizard-footer,
+:global(body.dark-mode) .wizard-footer {
+  border-top-color: #243244;
 }
 
 .wizard-footer-spacer {

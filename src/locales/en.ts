@@ -138,10 +138,13 @@ export default {
     { label: 'Civil servant', limit: '¥20,000' },
     { label: 'Homemaker (Daisan-go)', limit: '¥23,000' },
   ],
-  idecoOverLimitWarning: 'Your monthly contribution limit is ¥{limit}. Contributions above this amount are not permitted.',
+  idecoOverLimitWarning:
+    'Your monthly contribution limit is ¥{limit}. Contributions above this amount are not permitted.',
 
   // Inline strings migrated to i18n
   reset: 'Reset',
+  themeLight: 'Light',
+  themeDark: 'Dark',
   spouseAndDependents: 'Spouse and Dependents',
   spouseAge: 'Spouse Age',
   dependentAge: 'Age',
@@ -173,7 +176,8 @@ export default {
 
   // iDeCo tax-saving tip
   idecoTipTitle: 'Save taxes with iDeCo',
-  idecoTipDesc: 'Invest up to ¥{monthly}/month (¥{annual}/year) into iDeCo and reduce your taxable income.',
+  idecoTipDesc:
+    'Invest up to ¥{monthly}/month (¥{annual}/year) into iDeCo and reduce your taxable income.',
   idecoTipCurrent: 'Current',
   idecoTipWithIdeco: 'Max iDeCo',
   idecoTipIncomeTax: 'Income Tax',

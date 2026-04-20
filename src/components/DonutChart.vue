@@ -263,25 +263,26 @@ const segments = computed((): Segment[] => {
   z-index: 20;
   pointer-events: none;
   max-width: min(16rem, calc(100vw - 1.5rem));
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-soft);
   border-radius: 0.5rem;
-  background: #fff;
-  color: #111827;
+  background: var(--surface);
+  color: var(--text-primary);
   box-shadow: 0 10px 30px rgba(17, 24, 39, 0.12);
 }
 
 .center-label {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
-  fill: #111;
+  fill: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .center-sub {
-  font-size: 8px;
-  font-weight: 400;
-  fill: #888;
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  letter-spacing: 0.02em;
 }
 
 .donut-legend {
@@ -299,7 +300,7 @@ const segments = computed((): Segment[] => {
   align-items: center;
   gap: 0.6rem;
   font-size: 0.82rem;
-  color: #333;
+  color: var(--text-secondary);
 }
 
 .legend-swatch {
@@ -311,12 +312,12 @@ const segments = computed((): Segment[] => {
 
 .legend-label {
   flex: 1;
-  color: #555;
+  color: var(--text-secondary);
 }
 
 .legend-pct {
   font-weight: 600;
-  color: #111;
+  color: var(--text-primary);
   min-width: 3.5rem;
   text-align: right;
 }
@@ -342,7 +343,7 @@ const segments = computed((): Segment[] => {
 }
 
 .donut-tooltip-label {
-  color: #555;
+  color: var(--text-secondary);
   font-size: 0.82rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -357,13 +358,13 @@ const segments = computed((): Segment[] => {
 
 .donut-tooltip-value {
   font-weight: 600;
-  color: #111;
+  color: var(--text-primary);
   font-size: 0.82rem;
   white-space: nowrap;
 }
 
 .donut-tooltip-pct {
-  color: #888;
+  color: var(--text-secondary);
   font-size: 0.78rem;
   white-space: nowrap;
 }

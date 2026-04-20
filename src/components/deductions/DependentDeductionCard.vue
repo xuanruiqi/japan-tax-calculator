@@ -68,10 +68,20 @@ const formatCurrency = (value: number) =>
   color: #888;
 }
 
+:global(.theme-dark) .deduction-computed-label,
+:global(html.dark) .deduction-computed-label {
+  color: #e2e8f0;
+}
+
 .deduction-computed-value {
   font-size: 0.9rem;
   font-weight: 600;
   color: #3b5bdb;
+}
+
+:global(.theme-dark) .deduction-computed-value,
+:global(html.dark) .deduction-computed-value {
+  color: #e0e7ff;
 }
 
 .nta-reference-link {
@@ -83,8 +93,18 @@ const formatCurrency = (value: number) =>
   transition: color 0.2s;
 }
 
+:global(.theme-dark) .nta-reference-link,
+:global(html.dark) .nta-reference-link {
+  color: #e0e7ff;
+}
+
 .nta-reference-link:hover {
   color: #111;
   text-decoration: underline;
+}
+
+:global(.theme-dark) .nta-reference-link:hover,
+:global(html.dark) .nta-reference-link:hover {
+  color: #f8fafc;
 }
 </style>

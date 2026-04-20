@@ -127,10 +127,20 @@ h2 {
   letter-spacing: 0.05em;
 }
 
+:global(.theme-dark) h2,
+:global(html.dark) h2 {
+  color: #f8fafc;
+}
+
 .deductions-section {
   border-top: 1px solid #eaeaea;
   padding-top: 2rem;
   margin-top: 1rem;
+}
+
+:global(.theme-dark) .deductions-section,
+:global(html.dark) .deductions-section {
+  border-top-color: #243244;
 }
 
 .deductions-header {
@@ -152,6 +162,11 @@ h2 {
   margin: 0.5rem 0 1rem;
 }
 
+:global(.theme-dark) .no-deductions-msg,
+:global(html.dark) .no-deductions-msg {
+  color: #e2e8f0;
+}
+
 .deduction-total {
   display: flex;
   justify-content: space-between;
@@ -162,5 +177,11 @@ h2 {
   font-size: 0.92rem;
   font-weight: 600;
   color: #111;
+}
+
+:global(.theme-dark) .deduction-total,
+:global(html.dark) .deduction-total {
+  color: #f8fafc;
+  border-top-color: #243244;
 }
 </style>

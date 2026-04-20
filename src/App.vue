@@ -22,6 +22,7 @@ const locale = computed({
     ;(_locale as unknown as { value: 'en' | 'ja' }).value = v
   },
 })
+
 watchEffect(() => {
   document.title = t('title')
 })
@@ -72,6 +73,22 @@ const { addDependent, removeDependent, deductionAmountFor } = store
 // --- UI-only state ---
 const showHomeLoanWizard = ref(false)
 const editingHomeLoanId = ref<string | null>(null)
+const theme = ref<'light' | 'dark'>('light')
+
+watchEffect(() => {
+  const isDark = theme.value === 'dark'
+  document.documentElement.classList.toggle('dark', isDark)
+  document.documentElement.dataset.theme = theme.value
+  document.body.classList.toggle('dark-mode', isDark)
+
+  document.documentElement.style.backgroundColor = isDark ? '#020617' : '#f7f9fc'
+  document.body.style.backgroundColor = isDark ? '#020617' : '#f7f9fc'
+
+  const appRoot = document.getElementById('app')
+  if (appRoot) {
+    appRoot.style.backgroundColor = isDark ? '#020617' : '#f7f9fc'
+  }
+})
 
 // --- i18n-dependent computeds ---
 const prefName = (id: string) => PREFECTURE_NAMES[id]?.[locale.value] ?? id
@@ -127,21 +144,31 @@ const closeHomeLoanWizard = () => {
   editingHomeLoanId.value = null
 }
 
+const toggleTheme = () => {
+  theme.value = theme.value === 'light' ? 'dark' : 'light'
+}
+
 const resetState = () => {
   store.reset()
   locale.value = 'ja'
+  theme.value = 'light'
 }
 
 // --- Persistence ---
-const savedLocale = store.load()
-if (savedLocale === 'en' || savedLocale === 'ja') locale.value = savedLocale
+const savedPreferences = store.load()
+if (savedPreferences.locale === 'en' || savedPreferences.locale === 'ja') {
+  locale.value = savedPreferences.locale
+}
+if (savedPreferences.theme === 'light' || savedPreferences.theme === 'dark') {
+  theme.value = savedPreferences.theme
+}
 
 watch(
   () => store.$state,
-  () => store.save(locale.value),
+  () => store.save(locale.value, theme.value),
   { deep: true },
 )
-watch(locale, () => store.save(locale.value))
+watch([locale, theme], () => store.save(locale.value, theme.value))
 
 interface SiBreakdownEntry {
   entryId: string
@@ -233,25 +260,59 @@ const idecoSavings = computed(() => {
 // Pie chart slices
 const pieSlices = computed((): PieSlice[] => {
   const r = results.value
+  const palette =
+    theme.value === 'dark'
+      ? {
+          healthCare: '#5eead4',
+          nationalHealth: '#2dd4bf',
+          pension: '#60a5fa',
+          nationalPension: '#93c5fd',
+          employment: '#22d3ee',
+          incomeTax: '#fbbf24',
+          residentTax: '#c084fc',
+          ideco: '#fb923c',
+          furusato: '#f472b6',
+          takeHome: '#f8fafc',
+        }
+      : {
+          healthCare: '#6fcfad',
+          nationalHealth: '#6fcfad',
+          pension: '#3b82f6',
+          nationalPension: '#60a5fa',
+          employment: '#14b8a6',
+          incomeTax: '#f59e0b',
+          residentTax: '#a78bfa',
+          ideco: '#fb923c',
+          furusato: '#e879a0',
+          takeHome: '#22223b',
+        }
 
   const furusatoEntry = deductionEntries.value.find((e) => e.type === 'furusato')
   const furusatoDonation = furusatoEntry ? getCashCost(furusatoEntry, idecoMonthlyLimit.value) : 0
   const idecoAmount = totalCashCost.value - furusatoDonation
 
   return [
-    { label: t('pieHealthCare'), value: r.healthInsurance + r.kaigoInsurance, color: '#6fcfad' },
-    { label: t('nationalHealthInsurance'), value: r.nationalHealthInsurance, color: '#6fcfad' },
-    { label: t('pension'), value: r.pension, color: '#3b82f6' },
-    { label: t('nationalPension'), value: r.nationalPension, color: '#60a5fa' },
-    { label: t('employmentIns'), value: r.employmentInsurance, color: '#14b8a6' },
-    { label: t('incomeTax'), value: r.incomeTax, color: '#f59e0b' },
-    { label: t('residentTax'), value: r.residentTax, color: '#a78bfa' },
-    { label: t('pieIdeco'), value: idecoAmount, color: '#fb923c' },
-    { label: t('pieFurusato'), value: furusatoDonation, color: '#e879a0' },
+    {
+      label: t('pieHealthCare'),
+      value: r.healthInsurance + r.kaigoInsurance,
+      color: palette.healthCare,
+    },
+    {
+      label: t('nationalHealthInsurance'),
+      value: r.nationalHealthInsurance,
+      color: palette.nationalHealth,
+    },
+    { label: t('pension'), value: r.pension, color: palette.pension },
+    { label: t('nationalPension'), value: r.nationalPension, color: palette.nationalPension },
+    { label: t('employmentIns'), value: r.employmentInsurance, color: palette.employment },
+    { label: t('incomeTax'), value: r.incomeTax, color: palette.incomeTax },
+    { label: t('residentTax'), value: r.residentTax, color: palette.residentTax },
+    { label: t('pieIdeco'), value: idecoAmount, color: palette.ideco },
+    { label: t('pieFurusato'), value: furusatoDonation, color: palette.furusato },
     {
       label: t('pieTakeHome'),
       value: Math.max(0, r.netPay - totalCashCost.value),
-      color: '#22223b',
+      color: palette.takeHome,
     },
   ]
 })
@@ -259,21 +320,34 @@ const pieSlices = computed((): PieSlice[] => {
 
 <template>
   <UApp>
-    <UContainer
-      class="py-8 lg:py-0 pb-20"
-      :ui="{ base: 'w-full mx-auto px-4 sm:px-6 lg:px-0 lg:max-w-none' }"
-    >
-      <UButton
-        variant="outline"
-        size="sm"
-        color="neutral"
-        class="lang-toggle fixed top-5 right-6 z-[1000] rounded-full shadow-sm"
-        @click="locale = locale === 'en' ? 'ja' : 'en'"
+    <div :class="['app-shell', { 'theme-dark': theme === 'dark' }]">
+      <UContainer
+        class="app-container py-8 lg:py-0 pb-20"
+        :ui="{ base: 'w-full mx-auto px-4 sm:px-6 lg:px-0 lg:max-w-none' }"
       >
-        {{ locale === 'en' ? '日本語' : 'English' }}
-      </UButton>
+        <div class="top-controls fixed top-5 right-6 z-[1000]">
+        <UButton
+          variant="outline"
+          size="sm"
+          color="neutral"
+          class="theme-toggle rounded-full shadow-sm"
+          @click="toggleTheme"
+        >
+          {{ theme === 'dark' ? t('themeLight') : t('themeDark') }}
+        </UButton>
 
-      <UPageGrid :ui="{ base: 'grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-0' }">
+        <UButton
+          variant="outline"
+          size="sm"
+          color="neutral"
+          class="lang-toggle rounded-full shadow-sm"
+          @click="locale = locale === 'en' ? 'ja' : 'en'"
+        >
+          {{ locale === 'en' ? '日本語' : 'English' }}
+        </UButton>
+      </div>
+
+        <UPageGrid :ui="{ base: 'grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-0' }">
         <!-- Input Panel -->
         <div class="panel input-panel">
           <div
@@ -945,30 +1019,47 @@ const pieSlices = computed((): PieSlice[] => {
             </UCard>
           </div>
         </div>
-      </UPageGrid>
-    </UContainer>
-    <UFooter
-      class="sticky bottom-0 border-t border-gray-200 bg-white/85 backdrop-blur-sm"
-      :ui="{ top: 'text-center text-xs text-gray-400 space-y-0.5', container: 'hidden' }"
-    >
-      <template #top>
-        <div style="padding: 0.75rem 0">
-          <div>&copy; 2026 Xuanrui Qi</div>
-          <div>
-            <a
-              href="https://github.com/xuanruiqi/japan-tax-calculator"
-              target="_blank"
-              rel="noopener noreferrer"
-              >github.com/xuanruiqi/japan-tax-calculator</a
-            >
+        </UPageGrid>
+      </UContainer>
+      <UFooter
+        class="app-footer sticky bottom-0 border-t border-gray-200 bg-white/85 backdrop-blur-sm"
+        :ui="{ top: 'text-center text-xs text-gray-400 space-y-0.5', container: 'hidden' }"
+      >
+        <template #top>
+          <div style="padding: 0.75rem 0">
+            <div>&copy; 2026 Xuanrui Qi</div>
+            <div>
+              <a
+                href="https://github.com/xuanruiqi/japan-tax-calculator"
+                target="_blank"
+                rel="noopener noreferrer"
+                >github.com/xuanruiqi/japan-tax-calculator</a
+              >
+            </div>
           </div>
-        </div>
-      </template>
-    </UFooter>
+        </template>
+      </UFooter>
+    </div>
   </UApp>
 </template>
 
 <style scoped>
+.app-shell,
+.app-container {
+  min-height: 100vh;
+}
+
+.theme-dark,
+.theme-dark .app-container {
+  background: #020617;
+}
+
+.top-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 /* Layout — mobile: cards */
 .panel {
   background: #ffffff;
@@ -1007,6 +1098,16 @@ const pieSlices = computed((): PieSlice[] => {
     background: #fafafa;
     justify-content: flex-start;
     padding: 3rem 2rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .top-controls {
+    top: 1rem;
+    right: 1rem;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
   }
 }
 
@@ -1073,13 +1174,58 @@ const pieSlices = computed((): PieSlice[] => {
   font-size: 0.95rem;
 }
 
+:global(html.dark) .panel {
+  background: #111827;
+  border-color: #243244;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
+}
+
+.theme-dark .panel {
+  background: #111827;
+  border-color: #243244;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
+}
+
+:global(html.dark) .app-shell,
+:global(html.dark) .app-container {
+  background: #020617;
+}
+
+:global(html.dark) .viz-panel {
+  background: #020617;
+}
+
+.theme-dark .viz-panel {
+  background: #020617;
+}
+
+@media (min-width: 1024px) {
+  :global(html.dark) .panel {
+    border-right-color: #243244;
+    box-shadow: none;
+  }
+
+  .theme-dark .panel {
+    border-right-color: #243244;
+    box-shadow: none;
+  }
+
+  :global(html.dark) .viz-panel {
+    background: #020617;
+  }
+
+  .theme-dark .viz-panel {
+    background: #020617;
+  }
+}
+
 /* Section headers */
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.5rem;
-  padding-right: 5rem; /* clear fixed lang toggle on mobile */
+  padding-right: 7rem; /* clear both stacked fixed toggles on mobile */
 }
 
 @media (min-width: 1024px) {
@@ -1092,6 +1238,10 @@ const pieSlices = computed((): PieSlice[] => {
   margin-bottom: 0;
 }
 
+:global(html.dark) .section-header {
+  border-color: #243244 !important;
+}
+
 .input-section h2,
 .results-card h2 {
   font-size: 1.2rem;
@@ -1100,6 +1250,18 @@ const pieSlices = computed((): PieSlice[] => {
   margin-bottom: 1.5rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+:global(html.dark) .input-section h2,
+:global(html.dark) .results-card h2,
+:global(html.dark) .viz-title {
+  color: #f8fafc;
+}
+
+.theme-dark .input-section h2,
+.theme-dark .results-card h2,
+.theme-dark .viz-title {
+  color: #f8fafc;
 }
 
 /* Form fields */
@@ -1115,8 +1277,56 @@ const pieSlices = computed((): PieSlice[] => {
   margin-bottom: 0.4rem;
 }
 
+:global(html.dark) .input-group label,
+:global(html.dark) .result-row,
+:global(html.dark) .taxable-income-row,
+:global(html.dark) .estimated-monthly,
+:global(html.dark) .ideco-tip-table td,
+:global(html.dark) .hl-summary-row span:last-child,
+:global(html.dark) .deduction-total,
+:global(html.dark) .nhi-breakdown-total {
+  color: #cbd5e1;
+}
+
+.theme-dark .input-group label,
+.theme-dark .result-row,
+.theme-dark .taxable-income-row,
+.theme-dark .estimated-monthly,
+.theme-dark .ideco-tip-table td,
+.theme-dark .hl-summary-row span:last-child,
+.theme-dark .deduction-total,
+.theme-dark .nhi-breakdown-total {
+  color: #f8fafc;
+}
+
 .input-group small {
   color: #888 !important;
+}
+
+:global(html.dark) .input-group small,
+:global(html.dark) .si-toggle,
+:global(html.dark) .deduction-input-label,
+:global(html.dark) .no-deductions-msg,
+:global(html.dark) .sub-item,
+:global(html.dark) .taxable-income-sub,
+:global(html.dark) .viz-sub,
+:global(html.dark) .deduction-computed-label,
+:global(html.dark) .hl-summary-row,
+:global(html.dark) .nhi-breakdown-row {
+  color: #94a3b8 !important;
+}
+
+.theme-dark .input-group small,
+.theme-dark .si-toggle,
+.theme-dark .deduction-input-label,
+.theme-dark .no-deductions-msg,
+.theme-dark .sub-item,
+.theme-dark .taxable-income-sub,
+.theme-dark .viz-sub,
+.theme-dark .deduction-computed-label,
+.theme-dark .hl-summary-row,
+.theme-dark .nhi-breakdown-row {
+  color: #e2e8f0 !important;
 }
 
 .si-toggle {
@@ -1131,6 +1341,14 @@ const pieSlices = computed((): PieSlice[] => {
   padding-top: 1.5rem;
   border-top: 1px dashed #eaeaea;
   margin-top: 0.5rem;
+}
+
+:global(html.dark) .advanced-options-panel {
+  border-top-color: #243244;
+}
+
+.theme-dark .advanced-options-panel {
+  border-top-color: #243244;
 }
 
 /* Card list */
@@ -1159,6 +1377,14 @@ const pieSlices = computed((): PieSlice[] => {
   padding: 0;
 }
 
+:global(html.dark) .results-card {
+  background: transparent;
+}
+
+.theme-dark .results-card {
+  background: transparent;
+}
+
 .result-row {
   display: flex;
   justify-content: space-between;
@@ -1173,8 +1399,37 @@ const pieSlices = computed((): PieSlice[] => {
   font-size: 1.05rem;
 }
 
+:global(html.dark) .total-gross,
+:global(html.dark) .total-deductions,
+:global(html.dark) .net-pay,
+:global(html.dark) .taxable-income-value,
+:global(html.dark) .disposable-income-row,
+:global(html.dark) .deduction-total {
+  color: #f8fafc;
+}
+
+.theme-dark .total-gross,
+.theme-dark .total-deductions,
+.theme-dark .net-pay,
+.theme-dark .taxable-income-value,
+.theme-dark .disposable-income-row,
+.theme-dark .deduction-total,
+.theme-dark .net-value {
+  color: #f8fafc;
+}
+
 .deduction {
   color: #555;
+}
+
+:global(html.dark) .deduction,
+:global(html.dark) .employment-income-row {
+  color: #cbd5e1;
+}
+
+.theme-dark .deduction,
+.theme-dark .employment-income-row {
+  color: #f1f5f9;
 }
 
 .sub-item {
@@ -1194,6 +1449,20 @@ const pieSlices = computed((): PieSlice[] => {
   height: 1px;
   background: #eaeaea;
   margin: 1.25rem 0;
+}
+
+:global(html.dark) .divider,
+:global(html.dark) .deductions-section,
+:global(html.dark) .deduction-total,
+:global(html.dark) .employment-income-row {
+  border-color: #243244;
+}
+
+.theme-dark .divider,
+.theme-dark .deductions-section,
+.theme-dark .deduction-total,
+.theme-dark .employment-income-row {
+  border-color: #243244;
 }
 
 .net-pay {
@@ -1218,6 +1487,16 @@ const pieSlices = computed((): PieSlice[] => {
   font-weight: 500;
 }
 
+:global(html.dark) .estimated-monthly {
+  background: #0f172a;
+  border-color: #243244;
+}
+
+.theme-dark .estimated-monthly {
+  background: #0f172a;
+  border-color: #243244;
+}
+
 .bracket-info {
   display: inline-block;
   margin-left: 0.5rem;
@@ -1230,10 +1509,30 @@ const pieSlices = computed((): PieSlice[] => {
   vertical-align: middle;
 }
 
+:global(html.dark) .bracket-info {
+  background-color: #1e293b;
+  color: #cbd5e1;
+}
+
+.theme-dark .bracket-info {
+  background-color: #1e293b;
+  color: #f8fafc;
+}
+
 .marginal-rate-badge {
   background-color: #edf2ff;
   color: #3b5bdb;
   cursor: default;
+}
+
+:global(html.dark) .marginal-rate-badge {
+  background-color: rgba(59, 91, 219, 0.18);
+  color: #a5b4fc;
+}
+
+.theme-dark .marginal-rate-badge {
+  background-color: rgba(59, 91, 219, 0.18);
+  color: #e0e7ff;
 }
 
 .marginal-surtax {
@@ -1281,6 +1580,23 @@ const pieSlices = computed((): PieSlice[] => {
   color: #1a6b50;
 }
 
+:global(html.dark) .social-insurance-row,
+:global(html.dark) .furusato-credit-row,
+:global(html.dark) .furusato-credit-value {
+  color: #86efac;
+}
+
+:global(html.dark) .social-ins-value {
+  color: #86efac;
+}
+
+.theme-dark .social-insurance-row,
+.theme-dark .furusato-credit-row,
+.theme-dark .furusato-credit-value,
+.theme-dark .social-ins-value {
+  color: #86efac;
+}
+
 /* Deductions section */
 .deductions-section {
   border-top: 1px solid #eaeaea;
@@ -1319,6 +1635,26 @@ const pieSlices = computed((): PieSlice[] => {
   color: #3b5bdb;
 }
 
+:global(html.dark) .deduction-computed-value,
+:global(html.dark) .user-deduction-row,
+:global(html.dark) .user-deduction-row span:last-child,
+:global(html.dark) .home-loan-credit-row,
+:global(html.dark) .home-loan-credit-value,
+:global(html.dark) .furusato-sim-link,
+:global(html.dark) .nta-reference-link {
+  color: #a5b4fc;
+}
+
+.theme-dark .deduction-computed-value,
+.theme-dark .user-deduction-row,
+.theme-dark .user-deduction-row span:last-child,
+.theme-dark .home-loan-credit-row,
+.theme-dark .home-loan-credit-value,
+.theme-dark .furusato-sim-link,
+.theme-dark .nta-reference-link {
+  color: #e0e7ff;
+}
+
 .user-deduction-row {
   color: #3b4a7a;
   padding-left: 0.75rem;
@@ -1352,6 +1688,32 @@ const pieSlices = computed((): PieSlice[] => {
   vertical-align: middle;
 }
 
+:global(html.dark) .cash-cost-row {
+  color: #fcd34d;
+}
+
+:global(html.dark) .cash-cost-row span:last-child,
+:global(html.dark) .cash-cost-tag {
+  color: #fdba74;
+}
+
+:global(html.dark) .cash-cost-tag {
+  background: rgba(180, 83, 9, 0.2);
+}
+
+.theme-dark .cash-cost-row {
+  color: #fde68a;
+}
+
+.theme-dark .cash-cost-row span:last-child,
+.theme-dark .cash-cost-tag {
+  color: #fdba74;
+}
+
+.theme-dark .cash-cost-tag {
+  background: rgba(180, 83, 9, 0.2);
+}
+
 .disposable-income-row {
   font-weight: 600;
   color: #111;
@@ -1365,6 +1727,14 @@ const pieSlices = computed((): PieSlice[] => {
   font-weight: 400;
   margin-top: 0.25rem;
   font-style: italic;
+}
+
+:global(html.dark) .ideco-note {
+  color: #94a3b8;
+}
+
+.theme-dark .ideco-note {
+  color: #e2e8f0;
 }
 
 .furusato-credit-row {
@@ -1433,12 +1803,29 @@ const pieSlices = computed((): PieSlice[] => {
   overflow: hidden;
   font-size: 0.88rem;
 }
+
+:global(html.dark) .nhi-municipality-breakdown {
+  border-color: #243244;
+}
+
+.theme-dark .nhi-municipality-breakdown {
+  border-color: #243244;
+}
+
 .nhi-breakdown-row {
   display: flex;
   justify-content: space-between;
   padding: 0.35rem 0.7rem;
   border-bottom: 1px solid #f0f0f0;
   color: #555;
+}
+
+:global(html.dark) .nhi-breakdown-row {
+  border-bottom-color: #1e293b;
+}
+
+.theme-dark .nhi-breakdown-row {
+  border-bottom-color: #1e293b;
 }
 .nhi-breakdown-row:last-child {
   border-bottom: none;
@@ -1448,11 +1835,33 @@ const pieSlices = computed((): PieSlice[] => {
   color: #111;
   background: #f7f7f7;
 }
+
+:global(html.dark) .nhi-breakdown-total {
+  background: #0f172a;
+}
+
+.theme-dark .nhi-breakdown-total {
+  background: #0f172a;
+}
 .nhi-breakdown-reduction {
   color: #2e7d32;
   background: #f1f8f1;
   font-size: 0.82rem;
   font-weight: 500;
+}
+
+:global(html.dark) .nhi-breakdown-reduction,
+:global(html.dark) .pension-exemption-badge {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.theme-dark .nhi-breakdown-reduction,
+.theme-dark .pension-exemption-badge {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(34, 197, 94, 0.3);
 }
 
 .pension-exemption-badge {

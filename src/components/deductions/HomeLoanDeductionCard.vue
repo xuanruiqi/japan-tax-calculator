@@ -82,10 +82,20 @@ const formatCurrency = (value: number) =>
   color: #888;
 }
 
+:global(.theme-dark) .deduction-computed-label,
+:global(html.dark) .deduction-computed-label {
+  color: #e2e8f0;
+}
+
 .deduction-computed-value {
   font-size: 0.9rem;
   font-weight: 600;
   color: #3b5bdb;
+}
+
+:global(.theme-dark) .deduction-computed-value,
+:global(html.dark) .deduction-computed-value {
+  color: #e0e7ff;
 }
 
 .nta-reference-link {
@@ -97,9 +107,19 @@ const formatCurrency = (value: number) =>
   transition: color 0.2s;
 }
 
+:global(.theme-dark) .nta-reference-link,
+:global(html.dark) .nta-reference-link {
+  color: #e0e7ff;
+}
+
 .nta-reference-link:hover {
   color: #111;
   text-decoration: underline;
+}
+
+:global(.theme-dark) .nta-reference-link:hover,
+:global(html.dark) .nta-reference-link:hover {
+  color: #f8fafc;
 }
 
 .hl-summary-row {
@@ -110,8 +130,18 @@ const formatCurrency = (value: number) =>
   padding: 0.2rem 0;
 }
 
+:global(.theme-dark) .hl-summary-row,
+:global(html.dark) .hl-summary-row {
+  color: #e2e8f0;
+}
+
 .hl-summary-row span:last-child {
   font-weight: 600;
   color: #333;
+}
+
+:global(.theme-dark) .hl-summary-row span:last-child,
+:global(html.dark) .hl-summary-row span:last-child {
+  color: #f8fafc;
 }
 </style>

@@ -1,6 +1,10 @@
 import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
-import { calculateTaxesAndInsurance, getStandardRemunerationGrade, type TaxCalculationOptions } from '../utils/taxCalculation'
+import {
+  calculateTaxesAndInsurance,
+  getStandardRemunerationGrade,
+  type TaxCalculationOptions,
+} from '../utils/taxCalculation'
 import {
   computeNhiIncomes,
   calculateMunicipalityNhi,
@@ -45,6 +49,7 @@ export interface DependentEntry {
 
 interface SavedState {
   currentLocale: string
+  currentTheme?: 'light' | 'dark'
   enrolledEmployeeSI: boolean
   hasSpouseOrDependents: boolean
   hasSpouse: boolean
@@ -125,7 +130,10 @@ export const useTaxStore = defineStore('tax', () => {
     }
     const salaryGross = incomeEntries.value
       .filter((e) => e.type === 'salary')
-      .reduce((sum, e) => sum + (Number(e.monthlySalary) || 0) * 12 + (Number(e.annualBonus) || 0), 0)
+      .reduce(
+        (sum, e) => sum + (Number(e.monthlySalary) || 0) * 12 + (Number(e.annualBonus) || 0),
+        0,
+      )
     const bizIncome = incomeEntries.value
       .filter((e) => e.type === 'business')
       .reduce(
@@ -302,94 +310,98 @@ export const useTaxStore = defineStore('tax', () => {
     deductionEntries.value.filter((e) => getCashCost(e, idecoMonthlyLimit.value) > 0),
   )
 
-  const taxCalculationInput = computed((): { salary: number; bonus: number; options: TaxCalculationOptions } => {
-    const salary = Number(monthlySalaryInput.value) || 0
-    const bonus = Number(annualBonusInput.value) || 0
+  const taxCalculationInput = computed(
+    (): { salary: number; bonus: number; options: TaxCalculationOptions } => {
+      const salary = Number(monthlySalaryInput.value) || 0
+      const bonus = Number(annualBonusInput.value) || 0
 
-    const prevIncomeRaw = previousYearIncomeInput.value
-    const prevIncome = prevIncomeRaw == null || prevIncomeRaw === '' ? null : Number(prevIncomeRaw)
-    const hRate = customHealthRate.value !== null ? Number(customHealthRate.value) / 100 : 0.0499
-    const kRate = customKaigoRate.value !== null ? Number(customKaigoRate.value) / 100 : 0
-    const pRate = customPensionRate.value !== null ? Number(customPensionRate.value) / 100 : 0.0915
-    const eRate =
-      customEmploymentInsRate.value !== null ? Number(customEmploymentInsRate.value) / 100 : 0.006
+      const prevIncomeRaw = previousYearIncomeInput.value
+      const prevIncome =
+        prevIncomeRaw == null || prevIncomeRaw === '' ? null : Number(prevIncomeRaw)
+      const hRate = customHealthRate.value !== null ? Number(customHealthRate.value) / 100 : 0.0499
+      const kRate = customKaigoRate.value !== null ? Number(customKaigoRate.value) / 100 : 0
+      const pRate =
+        customPensionRate.value !== null ? Number(customPensionRate.value) / 100 : 0.0915
+      const eRate =
+        customEmploymentInsRate.value !== null ? Number(customEmploymentInsRate.value) / 100 : 0.006
 
-    const nonPrimaryEntries = incomeEntries.value.filter(
-      (e) => e.type === 'salary' && e !== primarySalaryEntry.value,
-    )
-    const additionalSalaryGross = nonPrimaryEntries.reduce(
-      (sum, e) => sum + (Number(e.monthlySalary) || 0) * 12 + (Number(e.annualBonus) || 0),
-      0,
-    )
-
-    let additionalHealthInsurance = 0
-    let additionalKaigoInsurance = 0
-    let additionalPension = 0
-    for (const entry of nonPrimaryEntries) {
-      const ms = Number(entry.monthlySalary) || 0
-      const ab = Number(entry.annualBonus) || 0
-      if (entry.joinsSocialInsurance) {
-        const hObj = getStandardRemunerationGrade(ms, 1390000)
-        const pObj = getStandardRemunerationGrade(ms, 650000)
-        const bonusStdH = Math.min(Math.floor(ab / 1000) * 1000, 5730000)
-        const bonusStdP = Math.min(Math.floor(ab / 1000) * 1000, 1500000)
-        additionalHealthInsurance +=
-          Math.floor(hObj.value * hRate) * 12 + Math.floor(bonusStdH * hRate)
-        additionalKaigoInsurance +=
-          Math.floor(hObj.value * kRate) * 12 + Math.floor(bonusStdH * kRate)
-        additionalPension += Math.floor(pObj.value * pRate) * 12 + Math.floor(bonusStdP * pRate)
-      }
-    }
-
-    const totalBusinessIncome = incomeEntries.value
-      .filter((e) => e.type === 'business')
-      .reduce(
-        (sum, e) => sum + Math.max(0, (Number(e.revenue) || 0) - (Number(e.expenses) || 0)),
+      const nonPrimaryEntries = incomeEntries.value.filter(
+        (e) => e.type === 'salary' && e !== primarySalaryEntry.value,
+      )
+      const additionalSalaryGross = nonPrimaryEntries.reduce(
+        (sum, e) => sum + (Number(e.monthlySalary) || 0) * 12 + (Number(e.annualBonus) || 0),
         0,
       )
 
-    const prefData = RESIDENT_TAX_RATES[residencePrefecture.value]
-    let localTaxRates = prefData
-      ? prefData.default
-      : { prefIncomeRate: 0.04, cityIncomeRate: 0.06, prefPerCapita: 1500, cityPerCapita: 3500 }
-
-    if (prefData && residenceCity.value !== 'standard') {
-      const cityOverrides = prefData.cities[residenceCity.value]
-      if (cityOverrides) {
-        localTaxRates = cityOverrides
+      let additionalHealthInsurance = 0
+      let additionalKaigoInsurance = 0
+      let additionalPension = 0
+      for (const entry of nonPrimaryEntries) {
+        const ms = Number(entry.monthlySalary) || 0
+        const ab = Number(entry.annualBonus) || 0
+        if (entry.joinsSocialInsurance) {
+          const hObj = getStandardRemunerationGrade(ms, 1390000)
+          const pObj = getStandardRemunerationGrade(ms, 650000)
+          const bonusStdH = Math.min(Math.floor(ab / 1000) * 1000, 5730000)
+          const bonusStdP = Math.min(Math.floor(ab / 1000) * 1000, 1500000)
+          additionalHealthInsurance +=
+            Math.floor(hObj.value * hRate) * 12 + Math.floor(bonusStdH * hRate)
+          additionalKaigoInsurance +=
+            Math.floor(hObj.value * kRate) * 12 + Math.floor(bonusStdH * kRate)
+          additionalPension += Math.floor(pObj.value * pRate) * 12 + Math.floor(bonusStdP * pRate)
+        }
       }
-    }
 
-    const globalSI = enrolledEmployeeSI.value
+      const totalBusinessIncome = incomeEntries.value
+        .filter((e) => e.type === 'business')
+        .reduce(
+          (sum, e) => sum + Math.max(0, (Number(e.revenue) || 0) - (Number(e.expenses) || 0)),
+          0,
+        )
 
-    return {
-      salary,
-      bonus,
-      options: {
-        previousYearGross: prevIncome,
-        healthInsuranceRate: globalSI ? hRate : 0,
-        kaigoInsuranceRate: globalSI ? kRate : 0,
-        pensionRate: globalSI ? pRate : 0,
-        nationalPensionAmount: globalSI ? 0 : pensionResult.value.annualPremium,
-        nationalHealthInsuranceAmount: globalSI ? 0 : nhiAmount.value,
-        employmentInsuranceRate:
-          primarySalaryEntry.value?.joinsEmploymentInsurance !== false ? eRate : 0,
-        primaryJoinsSocialInsurance: primarySalaryEntry.value?.joinsSocialInsurance !== false,
-        additionalSalaryGross,
-        additionalHealthInsurance: globalSI ? additionalHealthInsurance : 0,
-        additionalKaigoInsurance: globalSI ? additionalKaigoInsurance : 0,
-        additionalPension: globalSI ? additionalPension : 0,
-        businessIncome: totalBusinessIncome,
-        prefIncomeRate: localTaxRates.prefIncomeRate,
-        cityIncomeRate: localTaxRates.cityIncomeRate,
-        prefPerCapita: localTaxRates.prefPerCapita,
-        cityPerCapita: localTaxRates.cityPerCapita,
-        additionalDeductions: totalAdditionalDeductions.value,
-        furusatoNetDonation: furusatoNetDonation.value,
-        homeLoanCredit: homeLoanCreditAmount.value,
-      },
-    }
-  })
+      const prefData = RESIDENT_TAX_RATES[residencePrefecture.value]
+      let localTaxRates = prefData
+        ? prefData.default
+        : { prefIncomeRate: 0.04, cityIncomeRate: 0.06, prefPerCapita: 1500, cityPerCapita: 3500 }
+
+      if (prefData && residenceCity.value !== 'standard') {
+        const cityOverrides = prefData.cities[residenceCity.value]
+        if (cityOverrides) {
+          localTaxRates = cityOverrides
+        }
+      }
+
+      const globalSI = enrolledEmployeeSI.value
+
+      return {
+        salary,
+        bonus,
+        options: {
+          previousYearGross: prevIncome,
+          healthInsuranceRate: globalSI ? hRate : 0,
+          kaigoInsuranceRate: globalSI ? kRate : 0,
+          pensionRate: globalSI ? pRate : 0,
+          nationalPensionAmount: globalSI ? 0 : pensionResult.value.annualPremium,
+          nationalHealthInsuranceAmount: globalSI ? 0 : nhiAmount.value,
+          employmentInsuranceRate:
+            primarySalaryEntry.value?.joinsEmploymentInsurance !== false ? eRate : 0,
+          primaryJoinsSocialInsurance: primarySalaryEntry.value?.joinsSocialInsurance !== false,
+          additionalSalaryGross,
+          additionalHealthInsurance: globalSI ? additionalHealthInsurance : 0,
+          additionalKaigoInsurance: globalSI ? additionalKaigoInsurance : 0,
+          additionalPension: globalSI ? additionalPension : 0,
+          businessIncome: totalBusinessIncome,
+          prefIncomeRate: localTaxRates.prefIncomeRate,
+          cityIncomeRate: localTaxRates.cityIncomeRate,
+          prefPerCapita: localTaxRates.prefPerCapita,
+          cityPerCapita: localTaxRates.cityPerCapita,
+          additionalDeductions: totalAdditionalDeductions.value,
+          furusatoNetDonation: furusatoNetDonation.value,
+          homeLoanCredit: homeLoanCreditAmount.value,
+        },
+      }
+    },
+  )
 
   const results = computed(() => {
     const { salary, bonus, options } = taxCalculationInput.value
@@ -413,8 +425,7 @@ export const useTaxStore = defineStore('tax', () => {
     const entries = incomeEntries.value
     const sole = entries.length === 1 ? entries[0] : undefined
     if (!newVal && sole?.type === 'salary') {
-      const annualGross =
-        (Number(sole.monthlySalary) || 0) * 12 + (Number(sole.annualBonus) || 0)
+      const annualGross = (Number(sole.monthlySalary) || 0) * 12 + (Number(sole.annualBonus) || 0)
       incomeEntries.value = [
         {
           id: sole.id,
@@ -564,9 +575,10 @@ export const useTaxStore = defineStore('tax', () => {
   }
 
   // --- Persistence ---
-  function save(localeValue: string) {
+  function save(localeValue: string, themeValue: 'light' | 'dark') {
     const state: SavedState = {
       currentLocale: localeValue,
+      currentTheme: themeValue,
       enrolledEmployeeSI: enrolledEmployeeSI.value,
       hasSpouseOrDependents: hasSpouseOrDependents.value,
       hasSpouse: hasSpouse.value,
@@ -597,10 +609,10 @@ export const useTaxStore = defineStore('tax', () => {
     } catch {}
   }
 
-  function load(): string | null {
+  function load(): { locale: string | null; theme: 'light' | 'dark' | null } {
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return null
+      if (!raw) return { locale: null, theme: null }
       const s: Partial<SavedState> = JSON.parse(raw)
       if (s.enrolledEmployeeSI != null) enrolledEmployeeSI.value = s.enrolledEmployeeSI
       if (s.hasSpouseOrDependents != null) hasSpouseOrDependents.value = s.hasSpouseOrDependents
@@ -628,9 +640,12 @@ export const useTaxStore = defineStore('tax', () => {
         customEmploymentInsRate.value = s.customEmploymentInsRate
       if (s.selectedIndustry != null) selectedIndustry.value = s.selectedIndustry
       if (s.deductionEntries != null) deductionEntries.value = s.deductionEntries
-      return s.currentLocale ?? null
+      return {
+        locale: s.currentLocale ?? null,
+        theme: s.currentTheme === 'dark' ? 'dark' : s.currentTheme === 'light' ? 'light' : null,
+      }
     } catch {
-      return null
+      return { locale: null, theme: null }
     }
   }
 
