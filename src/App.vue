@@ -419,7 +419,7 @@ const pieSlices = computed((): PieSlice[] => {
               <h3 style="margin: 1rem 0 0.5rem; font-size: 0.95rem; font-weight: 600">
                 {{ t('nationalHealthInsurance') }}
               </h3>
-              <UButtonGroup class="nhi-toggle-group">
+              <div class="nhi-toggle-group" role="group" :aria-label="t('nationalHealthInsurance')">
                 <UButton
                   :variant="nhiMode === 'manual' ? 'solid' : 'outline'"
                   size="sm"
@@ -442,7 +442,7 @@ const pieSlices = computed((): PieSlice[] => {
                   @click="nhiMode = 'municipality'"
                   >{{ t('nhiModeCity') }}</UButton
                 >
-              </UButtonGroup>
+              </div>
 
               <template v-if="nhiMode === 'manual'">
                 <label class="deduction-input-label" style="margin-top: 0.5rem">{{
@@ -495,6 +495,7 @@ const pieSlices = computed((): PieSlice[] => {
               </template>
 
               <template v-else-if="nhiMode === 'municipality' && municipalityNhiBreakdown">
+                <p class="text-sm text-muted">{{ t('nhiMunicipalityHelp') }}</p>
                 <div class="nhi-municipality-breakdown">
                   <div
                     v-if="municipalityNhiBreakdown.reduction > 0"
@@ -534,6 +535,11 @@ const pieSlices = computed((): PieSlice[] => {
                     t('nhiChildSupportAutomaticHelp', {
                       rate: (municipalityChildSupportRates.incomeRate * 100).toFixed(2),
                       perCapita: formatCurrency(municipalityChildSupportRates.annualPerCapita),
+                      householdCharge: municipalityChildSupportRates.annualHousehold > 0
+                        ? t('nhiChildSupportHouseholdCharge', {
+                            amount: formatCurrency(municipalityChildSupportRates.annualHousehold),
+                          })
+                        : '',
                       cap: formatCurrency(municipalityChildSupportRates.annualCap),
                     })
                   }}

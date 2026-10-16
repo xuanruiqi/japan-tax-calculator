@@ -72,8 +72,13 @@ export const CITY_NAMES: Record<string, LocaleNames> = {
   sendai:         { ja: '仙台市',     en: 'Sendai' },
   saitama_city:   { ja: 'さいたま市', en: 'Saitama City' },
   chiba_city:     { ja: '千葉市',     en: 'Chiba City' },
+  funabashi:      { ja: '船橋市',     en: 'Funabashi' },
   tokyo_23ku:     { ja: '東京23区',   en: 'Tokyo 23 Wards' },
   musashino:      { ja: '武蔵野市',   en: 'Musashino' },
+  tachikawa:      { ja: '立川市',     en: 'Tachikawa' },
+  chofu:          { ja: '調布市',     en: 'Chofu' },
+  hachioji:       { ja: '八王子市',   en: 'Hachioji' },
+  mitaka:         { ja: '三鷹市',     en: 'Mitaka' },
   yokohama:       { ja: '横浜市',     en: 'Yokohama' },
   kawasaki:       { ja: '川崎市',     en: 'Kawasaki' },
   sagamihara:     { ja: '相模原市',   en: 'Sagamihara' },
@@ -173,9 +178,19 @@ export const RESIDENT_TAX_RATES: Record<string, PrefectureOverrides> = {
   },
   chiba: {
     default: { ...baseStandard },
-    cities: { chiba_city: { ...designatedCity } }
+    cities: { chiba_city: { ...designatedCity }, funabashi: { ...baseStandard } }
   },
-  tokyo:     { default: { ...baseStandard }, cities: { tokyo_23ku: { ...baseStandard }, musashino: { ...baseStandard } } },
+  tokyo: {
+    default: { ...baseStandard },
+    cities: {
+      tokyo_23ku: { ...baseStandard },
+      musashino: { ...baseStandard },
+      tachikawa: { ...baseStandard },
+      chofu: { ...baseStandard },
+      hachioji: { ...baseStandard },
+      mitaka: { ...baseStandard },
+    }
+  },
   kanagawa: {
     default: { prefIncomeRate: 0.04025, cityIncomeRate: 0.06, prefPerCapita: 1800, cityPerCapita: 3500 },
     cities: {
