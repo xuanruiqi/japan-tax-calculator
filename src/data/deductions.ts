@@ -2,6 +2,19 @@
 
 import type { HomeLoanParams } from './homeLoan';
 
+/**
+ * iDeCo monthly contribution limits (JPY), effective from the December 2026 contribution
+ * (2025年年金制度改正). Previous limits: ¥68,000 (self-employed), ¥23,000 (employee without
+ * a corporate pension). Employees with a corporate pension (企業型DC/DB/共済) may contribute
+ * `employee` minus their employer-plan contribution equivalent (他制度掛金相当額).
+ * https://home.dcplan.co.jp/dcideco/houkaisei2026.html
+ */
+export const IDECO_MONTHLY_LIMITS = {
+  selfEmployed: 75000, // 第1号被保険者 (incl. 国民年金基金 / 付加保険料)
+  employee: 62000, // 第2号被保険者
+  homemaker: 23000, // 第3号被保険者
+} as const;
+
 export type DeductionType =
   | 'life_insurance'
   | 'earthquake_insurance'
@@ -90,12 +103,12 @@ export const DEDUCTION_DEFS: Record<DeductionType, DeductionMeta> = {
     type: 'ideco',
     nameEn: 'iDeCo / Small Enterprise Mutual Aid',
     nameJa: '小規模企業共済等掛金控除 (iDeCo)',
-    descEn: 'Monthly contribution (¥23,000 for employees; ¥68,000 for self-employed)',
-    descJa: '月額掛金 (会社員: 月¥23,000 / 自営業: 月¥68,000)',
+    descEn: 'Monthly contribution (¥62,000 for employees; ¥75,000 for self-employed)',
+    descJa: '月額掛金 (会社員: 月¥62,000 / 自営業: 月¥75,000)',
     inputLabelEn: 'Monthly Contribution (JPY)',
     inputLabelJa: '月額掛金 (円)',
     inputIsCount: false,
-    maxInput: 68000,
+    maxInput: IDECO_MONTHLY_LIMITS.selfEmployed,
     hasCashCost: true,  // contributions go into a locked account, reducing disposable income
     ntaUrl: 'https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1135.htm',
   },
@@ -180,7 +193,7 @@ export function calculateDeductionAmount(
   type: DeductionType,
   value: number,
   annualGross: number,
-  idecoMonthlyLimit = 23000,
+  idecoMonthlyLimit: number = IDECO_MONTHLY_LIMITS.employee,
 ): number {
   if (!value || value <= 0) return 0;
 
@@ -246,7 +259,7 @@ export function calculateDeductionAmount(
  * This is separate from the tax deduction amount — it represents money that leaves the user's
  * disposable income even though it is not a "withholding" in the payroll sense.
  */
-export function getCashCost(entry: DeductionEntry, idecoMonthlyLimit = 23000): number {
+export function getCashCost(entry: DeductionEntry, idecoMonthlyLimit: number = IDECO_MONTHLY_LIMITS.employee): number {
   if (!DEDUCTION_DEFS[entry.type].hasCashCost) return 0;
   if (!entry.value || entry.value <= 0) return 0;
   switch (entry.type) {

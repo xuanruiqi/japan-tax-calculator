@@ -57,12 +57,16 @@ const formatCurrency = (value: number) =>
         }"
       >
         <template #content>
-          <div style="padding: 1rem; min-width: 220px">
+          <div style="padding: 1rem; min-width: 220px; max-width: 340px">
             <div style="font-weight: 600; margin-bottom: 0.6rem; font-size: 0.8rem">
               {{ t('idecoLimitTooltipTitle') }}
             </div>
             <div
-              v-for="row in tm('idecoLimitTooltipRows') as Array<{ label: string; limit: string }>"
+              v-for="row in tm('idecoLimitTooltipRows') as Array<{
+                label: string
+                limit: string
+                previous?: string
+              }>"
               :key="row.label"
               style="
                 display: flex;
@@ -74,10 +78,27 @@ const formatCurrency = (value: number) =>
               "
             >
               <span>{{ row.label }}</span>
-              <span style="font-weight: 600; color: #111; white-space: nowrap">{{
-                row.limit
-              }}</span>
+              <span style="white-space: nowrap">
+                <span
+                  v-if="row.previous"
+                  style="text-decoration: line-through; color: #999; margin-right: 0.35rem"
+                  >{{ row.previous }}</span
+                >
+                <span style="font-weight: 600; color: #111">{{ row.limit }}</span>
+              </span>
             </div>
+            <p
+              style="
+                margin-top: 0.6rem;
+                padding-top: 0.5rem;
+                border-top: 1px solid #eee;
+                font-size: 0.72rem;
+                line-height: 1.45;
+                color: #666;
+              "
+            >
+              {{ t('idecoLimitTooltipNote') }}
+            </p>
           </div>
         </template>
         <span
