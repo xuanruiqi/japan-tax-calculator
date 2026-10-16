@@ -41,6 +41,13 @@ export default {
   nhiTotalAmount: '年間国保額 (円)',
   nhiKintowari: '均等割額 (円/年)',
   nhiShotokuwari: '所得割率 (%)',
+  nhiKintowariExcludingChildSupport: '子ども・子育て支援金を除く国保の均等割額（円/年）',
+  nhiShotokuwariExcludingChildSupport: '子ども・子育て支援金を除く国保の所得割率（%）',
+  nhiChildSupportAutomaticHelp:
+    '令和8年度の子ども・子育て支援金を自動計算します。算定基礎額の{rate}%＋成人1人につき年額{perCapita}（年額上限{cap}）。成人1人が通年加入する前提で、低所得者の均等割軽減を適用します。',
+  nhiChildSupportExcludeFromInputs:
+    '上記の国保の料率・均等割額には、子ども・子育て支援金を含めないでください。',
+  nhiChildSupportOfficialRates: '自治体公式の令和8年度料率',
   nhiChildSupportRate: '子ども・子育て支援金の所得割率（%）',
   nhiTotalIncludesChildSupport:
     '子ども・子育て支援金を含む国民健康保険料の年額を入力してください。',
@@ -163,7 +170,7 @@ export default {
   nhiMedical: '医療分',
   nhiSupport: '支援金分',
   nhiLongTermCare: '介護分',
-  nhiChildSupport: '子ども分',
+  nhiChildSupport: '子ども・子育て支援金',
   nhiTotal: '合計',
   pensionFullExemption: '全額免除',
   pensionPartialExemption: '{tier}免除',

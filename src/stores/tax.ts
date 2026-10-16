@@ -9,6 +9,8 @@ import {
 import {
   computeNhiIncomes,
   calculateNhiChildSupportContribution,
+  calculateMunicipalityChildSupport,
+  getMunicipalityChildSupportRates,
   calculateMunicipalityNhi,
   isMunicipalitySupported,
   type NhiBreakdown,
@@ -293,6 +295,20 @@ export const useTaxStore = defineStore('tax', () => {
     return calculateMunicipalityNhi(residenceCity.value, totalIncome, base, ageGroup.value)
   })
 
+  const municipalityChildSupportRates = computed(() =>
+    getMunicipalityChildSupportRates(residenceCity.value),
+  )
+
+  const nhiChildSupportAmount = computed(() => {
+    if (enrolledEmployeeSI.value || nhiMode.value !== 'auto') return 0
+    const { salaryGross, bizIncome } = getNhiIncomes()
+    const { totalIncome, base } = computeNhiIncomes(salaryGross, bizIncome)
+    return (
+      calculateMunicipalityChildSupport(residenceCity.value, totalIncome, base) ??
+      calculateNhiChildSupportContribution(base, Number(nhiChildSupportRate.value) || 0)
+    )
+  })
+
   const nhiAmount = computed(() => {
     if (enrolledEmployeeSI.value) return 0
     if (nhiMode.value === 'manual') {
@@ -306,11 +322,7 @@ export const useTaxStore = defineStore('tax', () => {
     const { base } = computeNhiIncomes(salaryGross, bizIncome)
     const shotokuwari = Math.floor((base * (Number(nhiShotokuwariRate.value) || 0)) / 100)
     const kintowari = Number(nhiKintowari.value) || 0
-    return (
-      shotokuwari +
-      kintowari +
-      calculateNhiChildSupportContribution(base, Number(nhiChildSupportRate.value) || 0)
-    )
+    return shotokuwari + kintowari + nhiChildSupportAmount.value
   })
 
   const totalCashCost = computed(() =>
@@ -755,6 +767,8 @@ export const useTaxStore = defineStore('tax', () => {
     municipalityAutoAvailable,
     pensionResult,
     municipalityNhiBreakdown,
+    municipalityChildSupportRates,
+    nhiChildSupportAmount,
     nhiAmount,
     totalCashCost,
     cashCostEntries,

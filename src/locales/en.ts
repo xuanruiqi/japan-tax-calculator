@@ -46,6 +46,13 @@ export default {
   nhiKintowari: 'Per-capita levy (均等割 JPY/year)',
   nhiShotokuwari: 'Income-based rate (所得割 %)',
 
+  nhiKintowariExcludingChildSupport: 'Per-capita NHI amount excluding child levy (JPY/year)',
+  nhiShotokuwariExcludingChildSupport: 'NHI income-based rate excluding child levy (%)',
+  nhiChildSupportAutomaticHelp:
+    'FY2026 child levy is calculated automatically: {rate}% of the NHI income base + {perCapita}/year per adult, capped at {cap}/year. This estimate assumes one adult insured for the full year and applies low-income reductions to the fixed charge.',
+  nhiChildSupportExcludeFromInputs:
+    'Exclude this levy from the NHI rates and amounts entered above.',
+  nhiChildSupportOfficialRates: 'Official FY2026 municipality rates',
   nhiChildSupportRate: 'Child and Child-rearing Support Levy Rate (所得割 %)',
   nhiTotalIncludesChildSupport:
     'Include the child and child-rearing support levy in your annual NHI total.',
@@ -174,7 +181,7 @@ export default {
   nhiMedical: 'Medical',
   nhiSupport: 'Support',
   nhiLongTermCare: 'Long-term Care',
-  nhiChildSupport: 'Child Support',
+  nhiChildSupport: 'Child and Child-rearing Support Levy',
   nhiTotal: 'Total',
   pensionFullExemption: 'Full Exemption',
   pensionPartialExemption: '{tier} Exempt',

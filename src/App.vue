@@ -62,6 +62,8 @@ const {
   municipalityAutoAvailable,
   pensionResult,
   municipalityNhiBreakdown,
+  municipalityChildSupportRates,
+  nhiChildSupportAmount,
   totalCashCost,
   cashCostEntries,
   results,
@@ -452,30 +454,44 @@ const pieSlices = computed((): PieSlice[] => {
 
               <template v-else-if="nhiMode === 'auto'">
                 <label class="deduction-input-label" style="margin-top: 0.5rem">{{
-                  t('nhiKintowari')
+                  t(
+                    municipalityChildSupportRates
+                      ? 'nhiKintowariExcludingChildSupport'
+                      : 'nhiKintowari',
+                  )
                 }}</label>
                 <YenInputNumber v-model="nhiKintowari" :min="0" :step="100" />
                 <label class="deduction-input-label" style="margin-top: 0.5rem">{{
-                  t('nhiShotokuwari')
+                  t(
+                    municipalityChildSupportRates
+                      ? 'nhiShotokuwariExcludingChildSupport'
+                      : 'nhiShotokuwari',
+                  )
                 }}</label>
                 <UInput type="number" v-model.number="nhiShotokuwariRate" :min="0" :step="0.01">
                   <template #trailing><span class="text-sm text-muted">%</span></template>
                 </UInput>
-                <label
-                  for="nhi-child-support-rate"
-                  class="deduction-input-label"
-                  style="margin-top: 0.5rem"
-                >{{ t('nhiChildSupportRate') }}</label>
-                <UInput
-                  id="nhi-child-support-rate"
-                  type="number"
-                  v-model.number="nhiChildSupportRate"
-                  :min="0"
-                  :step="0.01"
-                >
-                  <template #trailing><span class="text-sm text-muted">%</span></template>
-                </UInput>
-                <p class="text-sm text-muted">{{ t('nhiChildSupportRateHelp') }}</p>
+                <div v-if="municipalityChildSupportRates" class="nhi-breakdown-row">
+                  <span>{{ t('childSupportContribution') }}</span>
+                  <span>{{ formatCurrency(nhiChildSupportAmount) }}</span>
+                </div>
+                <template v-else>
+                  <label
+                    for="nhi-child-support-rate"
+                    class="deduction-input-label"
+                    style="margin-top: 0.5rem"
+                  >{{ t('nhiChildSupportRate') }}</label>
+                  <UInput
+                    id="nhi-child-support-rate"
+                    type="number"
+                    v-model.number="nhiChildSupportRate"
+                    :min="0"
+                    :step="0.01"
+                  >
+                    <template #trailing><span class="text-sm text-muted">%</span></template>
+                  </UInput>
+                  <p class="text-sm text-muted">{{ t('nhiChildSupportRateHelp') }}</p>
+                </template>
               </template>
 
               <template v-else-if="nhiMode === 'municipality' && municipalityNhiBreakdown">
@@ -511,6 +527,26 @@ const pieSlices = computed((): PieSlice[] => {
                     <span>¥{{ municipalityNhiBreakdown.total.toLocaleString() }}</span>
                   </div>
                 </div>
+              </template>
+              <template v-if="nhiMode !== 'manual' && municipalityChildSupportRates">
+                <p class="text-sm text-muted">
+                  {{
+                    t('nhiChildSupportAutomaticHelp', {
+                      rate: (municipalityChildSupportRates.incomeRate * 100).toFixed(2),
+                      perCapita: formatCurrency(municipalityChildSupportRates.annualPerCapita),
+                      cap: formatCurrency(municipalityChildSupportRates.annualCap),
+                    })
+                  }}
+                </p>
+                <p v-if="nhiMode === 'auto'" class="text-sm text-muted">
+                  {{ t('nhiChildSupportExcludeFromInputs') }}
+                </p>
+                <a
+                  :href="municipalityChildSupportRates.sourceUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-sm underline"
+                >{{ t('nhiChildSupportOfficialRates') }}</a>
               </template>
             </div>
 
