@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { MessageSchema } from '../../locales'
-import { type DeductionEntry, DEDUCTION_DEFS } from '../../data/deductions'
+import { type DeductionEntry, DEDUCTION_DEFS, IDECO_REFORM_2026_URL } from '../../data/deductions'
 import { useTaxStore } from '../../stores/tax'
 import DeductionCardBase from './DeductionCardBase.vue'
 import YenInputNumber from '../YenInputNumber.vue'
@@ -99,6 +99,13 @@ const formatCurrency = (value: number) =>
             >
               {{ t('idecoLimitTooltipNote') }}
             </p>
+            <a
+              :href="IDECO_REFORM_2026_URL"
+              target="_blank"
+              rel="noopener noreferrer"
+              style="display: inline-block; margin-top: 0.4rem; font-size: 0.72rem; color: #3b5bdb"
+              >{{ t('idecoLimitTooltipSource') }} ↗</a
+            >
           </div>
         </template>
         <span

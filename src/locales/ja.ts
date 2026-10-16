@@ -135,6 +135,7 @@ export default {
   ],
   idecoLimitTooltipNote:
     '2026年12月分の掛金（2027年1月引落し）から拠出限度額が引き上げられました（取消線は改正前の上限）。企業年金（企業型DC・DB）に加入している会社員は、62,000円から他制度掛金相当額を差し引いた額まで拠出でき、従来の20,000円の上限は撤廃されました。',
+  idecoLimitTooltipSource: '制度改正の詳細（SBI証券）',
   idecoOverLimitWarning: '月額掛金の上限は{limit}円です。上限を超える掛金は拠出できません。',
 
   // Inline strings migrated to i18n

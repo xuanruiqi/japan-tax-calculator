@@ -144,6 +144,7 @@ export default {
   ],
   idecoLimitTooltipNote:
     'Limits were raised starting with the December 2026 contribution (debited January 2027); previous limits are struck through. Employees with a corporate pension (DC/DB) may contribute ¥62,000 minus their employer plan contributions, and the former ¥20,000 cap no longer applies.',
+  idecoLimitTooltipSource: 'Reform details (SBI Securities)',
   idecoOverLimitWarning:
     'Your monthly contribution limit is ¥{limit}. Contributions above this amount are not permitted.',
 

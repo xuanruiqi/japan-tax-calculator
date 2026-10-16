@@ -7,13 +7,17 @@ import type { HomeLoanParams } from './homeLoan';
  * (2025年年金制度改正). Previous limits: ¥68,000 (self-employed), ¥23,000 (employee without
  * a corporate pension). Employees with a corporate pension (企業型DC/DB/共済) may contribute
  * `employee` minus their employer-plan contribution equivalent (他制度掛金相当額).
- * https://home.dcplan.co.jp/dcideco/houkaisei2026.html
+ * No official NTA page exists yet; see IDECO_REFORM_2026_URL.
  */
 export const IDECO_MONTHLY_LIMITS = {
   selfEmployed: 75000, // 第1号被保険者 (incl. 国民年金基金 / 付加保険料)
   employee: 62000, // 第2号被保険者
   homemaker: 23000, // 第3号被保険者
 } as const;
+
+/** Explainer for the December 2026 iDeCo reform (SBI証券) — replace with NTA once published. */
+export const IDECO_REFORM_2026_URL =
+  'https://site2.sbisec.co.jp/ETGate/?OutSide=on&_ControlID=WPLETmgR001Control&_PageID=WPLETmgR001Mdtl30&_DataStoreID=DSWPLETmgR001Control&_ActionID=DefaultAID&getFlg=on&burl=search_dc&cat1=dc&cat2=none&dir=info&file=dc_info260127_system_amendment.html';
 
 export type DeductionType =
   | 'life_insurance'
