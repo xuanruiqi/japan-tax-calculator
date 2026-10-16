@@ -44,6 +44,7 @@ const {
   nhiManualAmount,
   nhiKintowari,
   nhiShotokuwariRate,
+  nhiChildSupportRate,
   selectedKenpo,
   showAdvancedOptions,
   customHealthRate,
@@ -61,6 +62,8 @@ const {
   municipalityAutoAvailable,
   pensionResult,
   municipalityNhiBreakdown,
+  municipalityChildSupportRates,
+  nhiChildSupportAmount,
   totalCashCost,
   cashCostEntries,
   results,
@@ -264,6 +267,7 @@ const pieSlices = computed((): PieSlice[] => {
     theme.value === 'dark'
       ? {
           healthCare: '#5eead4',
+          childSupport: '#99f6e4',
           nationalHealth: '#2dd4bf',
           pension: '#60a5fa',
           nationalPension: '#93c5fd',
@@ -276,6 +280,7 @@ const pieSlices = computed((): PieSlice[] => {
         }
       : {
           healthCare: '#6fcfad',
+          childSupport: '#14b8a6',
           nationalHealth: '#6fcfad',
           pension: '#3b82f6',
           nationalPension: '#60a5fa',
@@ -301,6 +306,11 @@ const pieSlices = computed((): PieSlice[] => {
       label: t('nationalHealthInsurance'),
       value: r.nationalHealthInsurance,
       color: palette.nationalHealth,
+    },
+    {
+      label: t('childSupportContribution'),
+      value: r.childSupportContribution,
+      color: palette.childSupport,
     },
     { label: t('pension'), value: r.pension, color: palette.pension },
     { label: t('nationalPension'), value: r.nationalPension, color: palette.nationalPension },
@@ -439,19 +449,49 @@ const pieSlices = computed((): PieSlice[] => {
                   t('nhiTotalAmount')
                 }}</label>
                 <YenInputNumber v-model="nhiManualAmount" :min="0" :step="1000" />
+                <p class="text-sm text-muted">{{ t('nhiTotalIncludesChildSupport') }}</p>
               </template>
 
               <template v-else-if="nhiMode === 'auto'">
                 <label class="deduction-input-label" style="margin-top: 0.5rem">{{
-                  t('nhiKintowari')
+                  t(
+                    municipalityChildSupportRates
+                      ? 'nhiKintowariExcludingChildSupport'
+                      : 'nhiKintowari',
+                  )
                 }}</label>
                 <YenInputNumber v-model="nhiKintowari" :min="0" :step="100" />
                 <label class="deduction-input-label" style="margin-top: 0.5rem">{{
-                  t('nhiShotokuwari')
+                  t(
+                    municipalityChildSupportRates
+                      ? 'nhiShotokuwariExcludingChildSupport'
+                      : 'nhiShotokuwari',
+                  )
                 }}</label>
                 <UInput type="number" v-model.number="nhiShotokuwariRate" :min="0" :step="0.01">
                   <template #trailing><span class="text-sm text-muted">%</span></template>
                 </UInput>
+                <div v-if="municipalityChildSupportRates" class="nhi-breakdown-row">
+                  <span>{{ t('childSupportContribution') }}</span>
+                  <span>{{ formatCurrency(nhiChildSupportAmount) }}</span>
+                </div>
+                <template v-else>
+                  <label
+                    for="nhi-child-support-rate"
+                    class="deduction-input-label"
+                    style="margin-top: 0.5rem"
+                  >{{ t('nhiChildSupportRate') }}</label>
+                  <UInput
+                    id="nhi-child-support-rate"
+                    type="number"
+                    v-model.number="nhiChildSupportRate"
+                    :min="0"
+                    :step="0.01"
+                  >
+                    <template #trailing><span class="text-sm text-muted">%</span></template>
+                  </UInput>
+                  <p class="text-sm text-muted">{{ t('nhiChildSupportRateHelp') }}</p>
+                </template>
               </template>
 
               <template v-else-if="nhiMode === 'municipality' && municipalityNhiBreakdown">
@@ -488,6 +528,26 @@ const pieSlices = computed((): PieSlice[] => {
                   </div>
                 </div>
               </template>
+              <template v-if="nhiMode !== 'manual' && municipalityChildSupportRates">
+                <p class="text-sm text-muted">
+                  {{
+                    t('nhiChildSupportAutomaticHelp', {
+                      rate: (municipalityChildSupportRates.incomeRate * 100).toFixed(2),
+                      perCapita: formatCurrency(municipalityChildSupportRates.annualPerCapita),
+                      cap: formatCurrency(municipalityChildSupportRates.annualCap),
+                    })
+                  }}
+                </p>
+                <p v-if="nhiMode === 'auto'" class="text-sm text-muted">
+                  {{ t('nhiChildSupportExcludeFromInputs') }}
+                </p>
+                <a
+                  :href="municipalityChildSupportRates.sourceUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-sm underline"
+                >{{ t('nhiChildSupportOfficialRates') }}</a>
+              </template>
             </div>
 
             <template v-if="enrolledEmployeeSI">
@@ -502,6 +562,7 @@ const pieSlices = computed((): PieSlice[] => {
               />
 
               <div v-show="showAdvancedOptions" class="advanced-options-panel">
+                <p class="text-sm text-muted">{{ t('childSupportEmployeeHelp') }}</p>
                 <div class="input-group">
                   <label>{{ t('unionSelect') }}</label>
                   <USelect
@@ -713,6 +774,16 @@ const pieSlices = computed((): PieSlice[] => {
                 </div>
               </template>
             </template>
+
+            <div
+              class="result-row deduction social-insurance-row"
+              v-if="results.childSupportContribution > 0"
+            >
+              <span>{{ t('childSupportContribution') }}</span>
+              <span class="social-ins-value">
+                - {{ formatCurrency(results.childSupportContribution) }}
+              </span>
+            </div>
 
             <!-- National Pension (when not in 厚生年金) -->
             <div class="result-row deduction social-insurance-row" v-if="!enrolledEmployeeSI">

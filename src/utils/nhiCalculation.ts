@@ -37,6 +37,12 @@ export function computeNhiIncomes(
   return { totalIncome, base };
 }
 
+/** Manual income-based levy estimate. Rate is entered as a percentage, e.g. 0.3. */
+export function calculateNhiChildSupportContribution(base: number, ratePercent: number): number {
+  if (!Number.isFinite(ratePercent)) return 0;
+  return Math.floor(Math.max(0, base) * Math.max(0, ratePercent) / 100);
+}
+
 /** @deprecated Use computeNhiIncomes instead. */
 export function computeNhiBase(salaryGross: number, bizIncome: number): number {
   return computeNhiIncomes(salaryGross, bizIncome).base;
@@ -70,7 +76,16 @@ function applyReduction(amount: number, reduction: number): number {
 // Municipality rate tables
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** FY2026 rates for the existing single-adult NHI estimate. Verified 2026-10-17. */
+export interface NhiChildSupportRates {
+  incomeRate: number
+  annualPerCapita: number
+  annualCap: number
+  sourceUrl: string
+}
+
 interface WardRates {
+  childSupportSourceUrl: string;
   shotokuMedical: number;
   shotokuSupport: number;
   shotokuKaigo:   number;
@@ -97,7 +112,7 @@ function calculateWardNhi(
   const kaigo   = ageGroup === '40to64'
     ? Math.min(Math.round(base * rates.shotokuKaigo) + applyReduction(rates.kintowariKaigo, reduction), rates.capKaigo)
     : 0;
-  const kodomo  = Math.min(Math.round(base * rates.shotokuKodomo) + applyReduction(rates.kintowariKodomo, reduction), rates.capKodomo);
+  const kodomo = calculateChildSupportFromRates(base, reduction, childSupportRates(rates));
   return { medical, support, kaigo, kodomo, total: medical + support + kaigo + kodomo, reduction };
 }
 
@@ -109,6 +124,7 @@ function calculateWardNhi(
  *   港区:     https://www.city.minato.tokyo.jp/shikaku/kurashi/hoken/kenkohoken/hokenryo.html
  */
 const TOKYO_WARD_RATES: WardRates = {
+  childSupportSourceUrl: 'https://www.city.chiyoda.lg.jp/koho/kurashi/hoken/kenkohoken/kesan.html',
   shotokuMedical: 0.0751, kintowariMedical: 47600, capMedical: 670000,
   shotokuSupport: 0.028,  kintowariSupport: 17600, capSupport: 260000,
   shotokuKaigo:   0.0243, kintowariKaigo:   17800, capKaigo:   170000,
@@ -120,6 +136,7 @@ const TOKYO_WARD_RATES: WardRates = {
  * Source: https://www.city.musashino.lg.jp/kurashi_tetsuzuki/kokuminkenkouhoken_kokuminnenkin/kokuminkenkohoken/1052169/1004710.html
  */
 const MUSASHINO_RATES: WardRates = {
+  childSupportSourceUrl: 'https://www.city.musashino.lg.jp/kurashi_tetsuzuki/kokuminkenkouhoken_kokuminnenkin/kokuminkenkohoken/1052169/1004710.html',
   shotokuMedical: 0.0579, kintowariMedical: 33000, capMedical: 660000,
   shotokuSupport: 0.0209, kintowariSupport: 12500, capSupport: 260000,
   shotokuKaigo:   0.0184, kintowariKaigo:   15000, capKaigo:   170000,
@@ -129,9 +146,10 @@ const MUSASHINO_RATES: WardRates = {
 /**
  * つくば市 (Tsukuba) — 令和8年度 (FY2026)
  * 子ども分 均等割: ¥1,400 base + ¥200 age-18+ surcharge; adults pay ¥1,600.
- * Source: https://www.city.tsukuba.lg.jp/soshikikarasagasu/hokembukokuminkenkohokenka/gyomuannai/4/1/1001243.html
+ * Source: https://www.city.tsukuba.lg.jp/kenko_iryo_fukushi/hoken/kenpo/1001243.html
  */
 const TSUKUBA_RATES: WardRates = {
+  childSupportSourceUrl: 'https://www.city.tsukuba.lg.jp/kenko_iryo_fukushi/hoken/kenpo/1001243.html',
   shotokuMedical: 0.0770, kintowariMedical: 38500, capMedical: 670000,
   shotokuSupport: 0.0315, kintowariSupport: 15500, capSupport: 260000,
   shotokuKaigo:   0.0250, kintowariKaigo:   15500, capKaigo:   170000,
@@ -144,6 +162,7 @@ const TSUKUBA_RATES: WardRates = {
  * Source: https://www.city.yokohama.lg.jp/kurashi/koseki-zei-hoken/kokuho/hokenryo/r7hokennryouritu.html
  */
 const YOKOHAMA_RATES: WardRates = {
+  childSupportSourceUrl: 'https://www.city.yokohama.lg.jp/kurashi/koseki-zei-hoken/kokuho/hokenryo/r7hokennryouritu.html',
   shotokuMedical: 0.0833, kintowariMedical: 40870, capMedical: 670000,
   shotokuSupport: 0.0262, kintowariSupport: 13380, capSupport: 260000,
   shotokuKaigo:   0.0284, kintowariKaigo:   16200, capKaigo:   170000,
@@ -154,27 +173,59 @@ const YOKOHAMA_RATES: WardRates = {
 // Dispatcher — add new cities here
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** City IDs that have municipality auto-calculation logic. */
-const SUPPORTED_MUNICIPALITY_CITIES = new Set(['tokyo_23ku', 'musashino', 'yokohama', 'tsukuba']);
-
-export function isMunicipalitySupported(city: string): boolean {
-  return SUPPORTED_MUNICIPALITY_CITIES.has(city);
+const MUNICIPALITY_RATES: Record<string, WardRates> = {
+  tokyo_23ku: TOKYO_WARD_RATES,
+  musashino: MUSASHINO_RATES,
+  yokohama: YOKOHAMA_RATES,
+  tsukuba: TSUKUBA_RATES,
 }
 
-/**
- * Returns a breakdown for the given city, or null if the city is not supported.
- */
+export function isMunicipalitySupported(city: string): boolean {
+  return Object.hasOwn(MUNICIPALITY_RATES, city)
+}
+
+function childSupportRates(rates: WardRates): NhiChildSupportRates {
+  return {
+    incomeRate: rates.shotokuKodomo,
+    annualPerCapita: rates.kintowariKodomo,
+    annualCap: rates.capKodomo,
+    sourceUrl: rates.childSupportSourceUrl,
+  }
+}
+
+export function getMunicipalityChildSupportRates(city: string): NhiChildSupportRates | null {
+  const rates = isMunicipalitySupported(city) ? MUNICIPALITY_RATES[city] : undefined
+  return rates ? childSupportRates(rates) : null
+}
+
+function calculateChildSupportFromRates(
+  base: number,
+  reduction: NhiBreakdown['reduction'],
+  rates: NhiChildSupportRates,
+): number {
+  return Math.min(
+    Math.round(Math.max(0, base) * rates.incomeRate) + applyReduction(rates.annualPerCapita, reduction),
+    rates.annualCap,
+  )
+}
+
+/** Single adult, full fiscal year; includes the reduced adult per-capita levy and annual cap. */
+export function calculateMunicipalityChildSupport(
+  city: string,
+  totalIncome: number,
+  base: number,
+): number | null {
+  const rates = getMunicipalityChildSupportRates(city)
+  return rates ? calculateChildSupportFromRates(base, kintowariReduction(totalIncome), rates) : null
+}
+
+/** Returns a breakdown for the given city, or null if the city is not supported. */
 export function calculateMunicipalityNhi(
   city: string,
   totalIncome: number,
   base: number,
   ageGroup: AgeGroup,
 ): NhiBreakdown | null {
-  switch (city) {
-    case 'tokyo_23ku': return calculateWardNhi(totalIncome, base, ageGroup, TOKYO_WARD_RATES);
-    case 'musashino':  return calculateWardNhi(totalIncome, base, ageGroup, MUSASHINO_RATES);
-    case 'yokohama':   return calculateWardNhi(totalIncome, base, ageGroup, YOKOHAMA_RATES);
-    case 'tsukuba':    return calculateWardNhi(totalIncome, base, ageGroup, TSUKUBA_RATES);
-    default:           return null;
-  }
+  const rates = isMunicipalitySupported(city) ? MUNICIPALITY_RATES[city] : undefined
+  return rates ? calculateWardNhi(totalIncome, base, ageGroup, rates) : null
 }
