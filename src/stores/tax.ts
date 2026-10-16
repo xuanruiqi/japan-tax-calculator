@@ -2,11 +2,13 @@ import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
 import {
   calculateTaxesAndInsurance,
+  calculateEmployeeChildSupportContribution,
   getStandardRemunerationGrade,
   type TaxCalculationOptions,
 } from '../utils/taxCalculation'
 import {
   computeNhiIncomes,
+  calculateNhiChildSupportContribution,
   calculateMunicipalityNhi,
   isMunicipalitySupported,
   type NhiBreakdown,
@@ -61,6 +63,7 @@ interface SavedState {
   nhiManualAmount: number | null
   nhiKintowari: number | null
   nhiShotokuwariRate: number | null
+  nhiChildSupportRate: number | null
   incomeEntries: IncomeEntry[]
   previousYearIncomeInput: number | null | ''
   employmentPrefecture: string
@@ -112,6 +115,7 @@ export const useTaxStore = defineStore('tax', () => {
   const nhiManualAmount = ref<number | null>(null)
   const nhiKintowari = ref<number | null>(null)
   const nhiShotokuwariRate = ref<number | null>(null)
+  const nhiChildSupportRate = ref<number | null>(null)
 
   const selectedKenpo = ref<KenpoType>('kyokai')
   const showAdvancedOptions = ref<boolean>(false)
@@ -302,7 +306,11 @@ export const useTaxStore = defineStore('tax', () => {
     const { base } = computeNhiIncomes(salaryGross, bizIncome)
     const shotokuwari = Math.floor((base * (Number(nhiShotokuwariRate.value) || 0)) / 100)
     const kintowari = Number(nhiKintowari.value) || 0
-    return shotokuwari + kintowari
+    return (
+      shotokuwari +
+      kintowari +
+      calculateNhiChildSupportContribution(base, Number(nhiChildSupportRate.value) || 0)
+    )
   })
 
   const totalCashCost = computed(() =>
@@ -338,11 +346,16 @@ export const useTaxStore = defineStore('tax', () => {
 
       let additionalHealthInsurance = 0
       let additionalKaigoInsurance = 0
+      let additionalChildSupportContribution = 0
       let additionalPension = 0
       for (const entry of nonPrimaryEntries) {
         const ms = Number(entry.monthlySalary) || 0
         const ab = Number(entry.annualBonus) || 0
         if (entry.joinsSocialInsurance) {
+          additionalChildSupportContribution += calculateEmployeeChildSupportContribution(
+            ms,
+            ab,
+          ).annual
           const hObj = getStandardRemunerationGrade(ms, 1390000)
           const pObj = getStandardRemunerationGrade(ms, 650000)
           const bonusStdH = Math.min(Math.floor(ab / 1000) * 1000, 5730000)
@@ -383,6 +396,7 @@ export const useTaxStore = defineStore('tax', () => {
           previousYearGross: prevIncome,
           healthInsuranceRate: globalSI ? hRate : 0,
           kaigoInsuranceRate: globalSI ? kRate : 0,
+          childSupportRate: globalSI ? undefined : 0,
           pensionRate: globalSI ? pRate : 0,
           nationalPensionAmount: globalSI ? 0 : pensionResult.value.annualPremium,
           nationalHealthInsuranceAmount: globalSI ? 0 : nhiAmount.value,
@@ -391,6 +405,7 @@ export const useTaxStore = defineStore('tax', () => {
           primaryJoinsSocialInsurance: primarySalaryEntry.value?.joinsSocialInsurance !== false,
           additionalSalaryGross,
           additionalHealthInsurance: globalSI ? additionalHealthInsurance : 0,
+          additionalChildSupportContribution: globalSI ? additionalChildSupportContribution : 0,
           additionalKaigoInsurance: globalSI ? additionalKaigoInsurance : 0,
           additionalPension: globalSI ? additionalPension : 0,
           businessIncome: totalBusinessIncome,
@@ -592,6 +607,7 @@ export const useTaxStore = defineStore('tax', () => {
       nhiManualAmount: nhiManualAmount.value,
       nhiKintowari: nhiKintowari.value,
       nhiShotokuwariRate: nhiShotokuwariRate.value,
+      nhiChildSupportRate: nhiChildSupportRate.value,
       incomeEntries: incomeEntries.value,
       previousYearIncomeInput: previousYearIncomeInput.value,
       employmentPrefecture: employmentPrefecture.value,
@@ -627,6 +643,7 @@ export const useTaxStore = defineStore('tax', () => {
       if (s.nhiManualAmount !== undefined) nhiManualAmount.value = s.nhiManualAmount
       if (s.nhiKintowari !== undefined) nhiKintowari.value = s.nhiKintowari
       if (s.nhiShotokuwariRate !== undefined) nhiShotokuwariRate.value = s.nhiShotokuwariRate
+      if (s.nhiChildSupportRate !== undefined) nhiChildSupportRate.value = s.nhiChildSupportRate
       if (s.incomeEntries != null) incomeEntries.value = s.incomeEntries
       if (s.previousYearIncomeInput !== undefined)
         previousYearIncomeInput.value = s.previousYearIncomeInput
@@ -663,6 +680,7 @@ export const useTaxStore = defineStore('tax', () => {
     nhiManualAmount.value = null
     nhiKintowari.value = null
     nhiShotokuwariRate.value = null
+    nhiChildSupportRate.value = null
     incomeEntries.value = [
       {
         id: 'salary-default',
@@ -712,6 +730,7 @@ export const useTaxStore = defineStore('tax', () => {
     nhiManualAmount,
     nhiKintowari,
     nhiShotokuwariRate,
+    nhiChildSupportRate,
     selectedKenpo,
     showAdvancedOptions,
     customHealthRate,

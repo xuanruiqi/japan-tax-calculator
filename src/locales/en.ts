@@ -46,6 +46,15 @@ export default {
   nhiKintowari: 'Per-capita levy (均等割 JPY/year)',
   nhiShotokuwari: 'Income-based rate (所得割 %)',
 
+  nhiChildSupportRate: 'Child and Child-rearing Support Levy Rate (所得割 %)',
+  nhiTotalIncludesChildSupport:
+    'Include the child and child-rearing support levy in your annual NHI total.',
+  nhiChildSupportRateHelp:
+    'Enter the levy rate separately from the NHI income-based rate above. Applied to the same NHI income base, without an employer split. Include any flat levy in the per-capita amount. For caps or reductions, enter your annual NHI total instead.',
+  childSupportContribution: 'Child and Child-rearing Support Levy',
+  childSupportEmployeeHelp:
+    'FY2026 levy: 0.23% total, with an employee share of 0.115%, in addition to health insurance. Applies to standard remuneration and bonuses. Annual estimates use 12 months at this rate; collection began in April 2026.',
+
   // Options
   ageUnder40: 'Under 40 - No Kaigo',
   age40to64: '40 to 64 - Pay Kaigo',

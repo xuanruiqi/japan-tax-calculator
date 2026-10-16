@@ -1,7 +1,10 @@
+import { CHILD_SUPPORT_EMPLOYEE_RATE } from '../data/childSupport'
+
 export interface TaxCalculationResult {
   annualGross: number;
   healthInsurance: number;
   kaigoInsurance: number;
+  childSupportContribution: number;
   pension: number;
   incomeTax: number;
   marginalRate: number;        // base bracket rate, e.g. 20
@@ -101,10 +104,30 @@ export function getStandardRemunerationGrade(salary: number, maxBracketValue: nu
   return { value: maxBracketValue, grade: maxIndexFallback + 1 }; 
 }
 
+export interface EmployeeChildSupportContribution {
+  monthly: number;
+  bonus: number;
+  annual: number;
+}
+
+/** Uses the health insurance remuneration grades and bonus cap, employee share only. */
+export function calculateEmployeeChildSupportContribution(
+  monthlySalary: number,
+  annualBonus: number,
+  rate = CHILD_SUPPORT_EMPLOYEE_RATE,
+): EmployeeChildSupportContribution {
+  const standard = getStandardRemunerationGrade(monthlySalary, 1390000).value;
+  const bonusStandard = Math.min(Math.floor(Math.max(0, annualBonus) / 1000) * 1000, 5730000);
+  const monthly = Math.floor(standard * rate);
+  const bonus = Math.floor(bonusStandard * rate);
+  return { monthly, bonus, annual: monthly * 12 + bonus };
+}
+
 export interface TaxCalculationOptions {
   previousYearGross?: number | null;
   healthInsuranceRate?: number;
   kaigoInsuranceRate?: number;
+  childSupportRate?: number; // employee share; defaults to the FY2026 statutory rate
   pensionRate?: number;
   employmentInsuranceRate?: number;
   prefIncomeRate?: number;
@@ -116,6 +139,7 @@ export interface TaxCalculationOptions {
   nationalHealthInsuranceAmount?: number; // 国民健康保険 total (when not in 健康保険)
   additionalSalaryGross?: number; // gross salary from non-primary jobs
   additionalHealthInsurance?: number;  // health insurance from non-primary workplaces
+  additionalChildSupportContribution?: number; // non-primary insured workplaces
   additionalKaigoInsurance?: number;   // kaigo insurance from non-primary workplaces
   additionalPension?: number;          // pension from non-primary workplaces
   additionalEmploymentInsurance?: number; // employment insurance from non-primary workplaces
@@ -158,6 +182,9 @@ export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: n
   const bonusKaigo = Math.floor(bonusStandardHealth * KAIGO_RATE);
   const bonusPension = Math.floor(bonusStandardPension * PENSION_RATE);
 
+  const childSupport = calculateEmployeeChildSupportContribution(siSalary, siBonus, options.childSupportRate);
+  const annualChildSupport = childSupport.annual + (options.additionalChildSupportContribution ?? 0);
+
   const primaryAnnualHealth = monthlyHealth * 12 + bonusHealth;
   const primaryAnnualKaigo = monthlyKaigo * 12 + bonusKaigo;
   const primaryAnnualPension = monthlyPension * 12 + bonusPension;
@@ -179,7 +206,7 @@ export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: n
 
   const nationalPension = options.nationalPensionAmount ?? 0;
   const nationalHealthInsurance = options.nationalHealthInsuranceAmount ?? 0;
-  const totalSocialInsurance = annualHealth + annualKaigo + annualPension + nationalPension + nationalHealthInsurance + annualEmploymentInsurance;
+  const totalSocialInsurance = annualChildSupport + annualHealth + annualKaigo + annualPension + nationalPension + nationalHealthInsurance + annualEmploymentInsurance;
 
   // --- Employment Income Deduction (給与所得控除) — on total salary gross ---
   let employmentIncomeDeduction = 0;
@@ -329,16 +356,17 @@ export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: n
   let bonusNet = 0;
   
   if (annualGross > 0) {
-    monthlyNet = monthlySalary - monthlyHealth - monthlyKaigo - monthlyPension - monthlyEmploymentInsurance - Math.floor((adjustedIncomeTax + adjustedResidentTax) * (monthlySalary / annualGross));
+    monthlyNet = monthlySalary - childSupport.monthly - monthlyHealth - monthlyKaigo - monthlyPension - monthlyEmploymentInsurance - Math.floor((adjustedIncomeTax + adjustedResidentTax) * (monthlySalary / annualGross));
     if (annualBonus > 0) {
       const bonusEmploymentInsurance = Math.floor(annualBonus * EMP_INS_RATE);
-      bonusNet = annualBonus - bonusHealth - bonusKaigo - bonusPension - bonusEmploymentInsurance - Math.floor((adjustedIncomeTax + adjustedResidentTax) * (annualBonus / annualGross));
+      bonusNet = annualBonus - childSupport.bonus - bonusHealth - bonusKaigo - bonusPension - bonusEmploymentInsurance - Math.floor((adjustedIncomeTax + adjustedResidentTax) * (annualBonus / annualGross));
     }
   }
 
   return {
     annualGross,
     healthInsurance: annualHealth,
+    childSupportContribution: annualChildSupport,
     kaigoInsurance: annualKaigo,
     pension: annualPension,
     employmentInsurance: annualEmploymentInsurance,

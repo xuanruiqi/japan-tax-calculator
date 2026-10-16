@@ -41,6 +41,14 @@ export default {
   nhiTotalAmount: '年間国保額 (円)',
   nhiKintowari: '均等割額 (円/年)',
   nhiShotokuwari: '所得割率 (%)',
+  nhiChildSupportRate: '子ども・子育て支援金の所得割率（%）',
+  nhiTotalIncludesChildSupport:
+    '子ども・子育て支援金を含む国民健康保険料の年額を入力してください。',
+  nhiChildSupportRateHelp:
+    '上記の所得割率とは別に支援金の所得割率を入力してください。同じ算定基礎額に適用し、労使折半は行いません。支援金の均等割額は上記の均等割額に含めてください。上限額や軽減を反映する場合は、保険料の年額を直接入力してください。',
+  childSupportContribution: '子ども・子育て支援金',
+  childSupportEmployeeHelp:
+    '令和8年度の支援金率は0.23%（本人負担0.115%）で、健康保険料に加算されます。標準報酬月額・標準賞与額に適用します。2026年4月分からの制度ですが、年額はこの料率で12か月分を試算します。',
 
   ageUnder40: '40歳未満 - 介護保険なし',
   age40to64: '40歳〜64歳 - 介護保険あり',

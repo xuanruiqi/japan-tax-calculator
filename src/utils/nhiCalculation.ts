@@ -37,6 +37,12 @@ export function computeNhiIncomes(
   return { totalIncome, base };
 }
 
+/** Manual income-based levy estimate. Rate is entered as a percentage, e.g. 0.3. */
+export function calculateNhiChildSupportContribution(base: number, ratePercent: number): number {
+  if (!Number.isFinite(ratePercent)) return 0;
+  return Math.floor(Math.max(0, base) * Math.max(0, ratePercent) / 100);
+}
+
 /** @deprecated Use computeNhiIncomes instead. */
 export function computeNhiBase(salaryGross: number, bizIncome: number): number {
   return computeNhiIncomes(salaryGross, bizIncome).base;
