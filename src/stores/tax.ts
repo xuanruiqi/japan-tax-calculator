@@ -20,6 +20,7 @@ import {
   DEDUCTION_ORDER,
   calculateDeductionAmount,
   getCashCost,
+  IDECO_MONTHLY_LIMITS,
 } from '../data/deductions'
 import { calculateHomeLoanCredit, type HomeLoanParams } from '../data/homeLoan'
 
@@ -170,7 +171,9 @@ export const useTaxStore = defineStore('tax', () => {
   })
 
   const idecoMonthlyLimit = computed(() =>
-    incomeEntries.value.some((e) => e.type === 'salary' && e.joinsSocialInsurance) ? 23000 : 68000,
+    incomeEntries.value.some((e) => e.type === 'salary' && e.joinsSocialInsurance)
+      ? IDECO_MONTHLY_LIMITS.employee
+      : IDECO_MONTHLY_LIMITS.selfEmployed,
   )
 
   const availableDeductionTypes = computed(() => {

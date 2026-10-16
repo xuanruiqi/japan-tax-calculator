@@ -123,12 +123,19 @@ export default {
   ntaReference: '国税庁の解説',
   idecoLimitTooltipTitle: '月額掛金の上限',
   idecoLimitTooltipRows: [
-    { label: '自営業・フリーランス', limit: '68,000円' },
-    { label: '会社員（企業年金なし）', limit: '23,000円' },
-    { label: '会社員（企業年金あり）', limit: '20,000円' },
-    { label: '公務員', limit: '20,000円' },
+    { label: '自営業・フリーランス', limit: '75,000円', previous: '68,000円' },
+    { label: '会社員（企業年金なし）', limit: '62,000円', previous: '23,000円' },
+    {
+      label: '会社員（企業年金あり）',
+      limit: '62,000円 − 他制度掛金',
+      previous: '20,000円',
+    },
+    { label: '公務員', limit: '54,000円', previous: '20,000円' },
     { label: '専業主婦・主夫（第3号）', limit: '23,000円' },
   ],
+  idecoLimitTooltipNote:
+    '2026年12月分の掛金（2027年1月引落し）から拠出限度額が引き上げられました（取消線は改正前の上限）。企業年金（企業型DC・DB）に加入している会社員は、62,000円から他制度掛金相当額を差し引いた額まで拠出でき、従来の20,000円の上限は撤廃されました。',
+  idecoLimitTooltipSource: '制度改正の詳細（SBI証券）',
   idecoOverLimitWarning: '月額掛金の上限は{limit}円です。上限を超える掛金は拠出できません。',
 
   // Inline strings migrated to i18n

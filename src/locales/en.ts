@@ -132,12 +132,19 @@ export default {
   ntaReference: 'NTA guide',
   idecoLimitTooltipTitle: 'Monthly contribution limits',
   idecoLimitTooltipRows: [
-    { label: 'Self-employed / freelancer', limit: '¥68,000' },
-    { label: 'Company employee (no pension plan)', limit: '¥23,000' },
-    { label: 'Company employee (with pension plan)', limit: '¥20,000' },
-    { label: 'Civil servant', limit: '¥20,000' },
+    { label: 'Self-employed / freelancer', limit: '¥75,000', previous: '¥68,000' },
+    { label: 'Company employee (no pension plan)', limit: '¥62,000', previous: '¥23,000' },
+    {
+      label: 'Company employee (with pension plan)',
+      limit: '¥62,000 − employer plan',
+      previous: '¥20,000',
+    },
+    { label: 'Civil servant', limit: '¥54,000', previous: '¥20,000' },
     { label: 'Homemaker (Daisan-go)', limit: '¥23,000' },
   ],
+  idecoLimitTooltipNote:
+    'Limits were raised starting with the December 2026 contribution (debited January 2027); previous limits are struck through. Employees with a corporate pension (DC/DB) may contribute ¥62,000 minus their employer plan contributions, and the former ¥20,000 cap no longer applies.',
+  idecoLimitTooltipSource: 'Reform details (SBI Securities)',
   idecoOverLimitWarning:
     'Your monthly contribution limit is ¥{limit}. Contributions above this amount are not permitted.',
 
