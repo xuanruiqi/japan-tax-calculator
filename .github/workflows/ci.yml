@@ -28,5 +28,8 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
+      - name: Run regression tests
+        run: node --experimental-strip-types --test src/utils/__tests__/*.test.ts
+
       - name: Type-check and build
         run: yarn build

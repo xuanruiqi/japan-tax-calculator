@@ -85,7 +85,7 @@ for (const c of cases) {
 }
 
 test('unsupported municipality IDs do not supply automatic levy rates', () => {
-  for (const city of ['standard', 'sapporo', '__proto__', 'toString']) {
+  for (const city of ['standard', 'yubari', '__proto__', 'toString']) {
     assert.equal(isMunicipalitySupported(city), false)
     assert.equal(getMunicipalityChildSupportRates(city), null)
     assert.equal(calculateMunicipalityChildSupport(city, 1430000, 1000000), null)

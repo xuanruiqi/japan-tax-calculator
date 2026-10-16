@@ -42,6 +42,8 @@ export default {
   nhiModeManual: 'Enter total amount',
   nhiModeAuto: 'Calculate from rates',
   nhiModeCity: 'Auto-calculate',
+  nhiMunicipalityHelp:
+    'FY2026 estimate for one adult insured for the full year. Includes any municipal household charge. Household members, midyear changes, and special exemptions are not modeled.',
   nhiTotalAmount: 'Annual NHI Amount (JPY)',
   nhiKintowari: 'Per-capita levy (均等割 JPY/year)',
   nhiShotokuwari: 'Income-based rate (所得割 %)',
@@ -49,7 +51,8 @@ export default {
   nhiKintowariExcludingChildSupport: 'Per-capita NHI amount excluding child levy (JPY/year)',
   nhiShotokuwariExcludingChildSupport: 'NHI income-based rate excluding child levy (%)',
   nhiChildSupportAutomaticHelp:
-    'FY2026 child levy is calculated automatically: {rate}% of the NHI income base + {perCapita}/year per adult, capped at {cap}/year. This estimate assumes one adult insured for the full year and applies low-income reductions to the fixed charge.',
+    'FY2026 child levy is calculated automatically: {rate}% of the NHI income base + {perCapita}/year per adult{householdCharge}, capped at {cap}/year. This estimate assumes one adult insured for the full year and applies low-income reductions to the fixed charges.',
+  nhiChildSupportHouseholdCharge: ' + {amount}/year per household',
   nhiChildSupportExcludeFromInputs:
     'Exclude this levy from the NHI rates and amounts entered above.',
   nhiChildSupportOfficialRates: 'Official FY2026 municipality rates',
@@ -176,7 +179,7 @@ export default {
   dependent: 'Dependent',
   deductionAmountLabel: 'Deduction amount',
   count: 'Count',
-  nhiPerCapitaReduction: 'Per-capita Reduction',
+  nhiPerCapitaReduction: 'Fixed-charge Reduction',
   nhiReductionOff: 'off',
   nhiMedical: 'Medical',
   nhiSupport: 'Support',

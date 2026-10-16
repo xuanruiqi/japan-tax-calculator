@@ -38,13 +38,16 @@ export default {
   nhiModeManual: '金額を直接入力',
   nhiModeAuto: '料率から計算',
   nhiModeCity: '自動計算',
+  nhiMunicipalityHelp:
+    '令和8年度に成人1人が通年加入する場合の試算です。自治体の均等割額も含みます。同一世帯の他の加入者、年度途中の異動、特別な減免は反映していません。',
   nhiTotalAmount: '年間国保額 (円)',
   nhiKintowari: '均等割額 (円/年)',
   nhiShotokuwari: '所得割率 (%)',
   nhiKintowariExcludingChildSupport: '子ども・子育て支援金を除く国保の均等割額（円/年）',
   nhiShotokuwariExcludingChildSupport: '子ども・子育て支援金を除く国保の所得割率（%）',
   nhiChildSupportAutomaticHelp:
-    '令和8年度の子ども・子育て支援金を自動計算します。算定基礎額の{rate}%＋成人1人につき年額{perCapita}（年額上限{cap}）。成人1人が通年加入する前提で、低所得者の均等割軽減を適用します。',
+    '令和8年度の子ども・子育て支援金を自動計算します。算定基礎額の{rate}%＋成人1人につき年額{perCapita}{householdCharge}（年額上限{cap}）。成人1人が通年加入する前提で、低所得者の均等割・平等割軽減を適用します。',
+  nhiChildSupportHouseholdCharge: '＋1世帯につき年額{amount}',
   nhiChildSupportExcludeFromInputs:
     '上記の国保の料率・均等割額には、子ども・子育て支援金を含めないでください。',
   nhiChildSupportOfficialRates: '自治体公式の令和8年度料率',
@@ -165,7 +168,7 @@ export default {
   dependent: '被扶養者',
   deductionAmountLabel: '控除額',
   count: '人数',
-  nhiPerCapitaReduction: '均等割軽減',
+  nhiPerCapitaReduction: '均等割・平等割軽減',
   nhiReductionOff: '軽減',
   nhiMedical: '医療分',
   nhiSupport: '支援金分',

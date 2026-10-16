@@ -524,29 +524,24 @@ body.dark-mode button.reset-btn[data-slot='base']:hover {
 /* === NHI toggle button group === */
 .nhi-toggle-group {
   width: 100%;
-  display: flex !important;
-  flex-wrap: nowrap !important;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 .nhi-toggle-group button.nhi-toggle-btn[data-slot='base'] {
-  border-radius: 0 !important;
+  border-radius: 6px !important;
   padding: 0.5rem 0.6rem !important;
   font-size: 0.8rem !important;
   font-weight: 500 !important;
   box-shadow: none !important;
-  white-space: nowrap !important;
-  flex: 1 1 0 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 auto !important;
   justify-content: center !important;
   text-align: center !important;
-  /* Collapse inner border */
   border: 1px solid #ccc !important;
-  margin-left: -1px;
-}
-.nhi-toggle-group button.nhi-toggle-btn:first-child[data-slot='base'] {
-  border-radius: 6px 0 0 6px !important;
-  margin-left: 0;
-}
-.nhi-toggle-group button.nhi-toggle-btn:last-child[data-slot='base'] {
-  border-radius: 0 6px 6px 0 !important;
 }
 
 /* === UButton — generic outline (add income/deduction, edit) === */
