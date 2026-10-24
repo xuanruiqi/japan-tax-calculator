@@ -109,8 +109,19 @@ export default {
   cashCostContributions: 'Savings Contributions',
   disposableIncome: 'Disposable Take-home',
   disposableIncomeSub: 'After iDeCo / savings contributions',
+  furusatoIncomeDeduction: 'Furusato donation income deduction',
+  furusatoMaxDonation: 'Estimated Furusato Nozei donation limit',
+  furusatoEstimateHelp:
+    'Annual donation including the ¥2,000 personal cost, assuming a tax return. Uses this year’s income, insurance and deductions; resident-tax relief applies next year. Rounded down to the yen before tax rounding. Uses the app’s simplified tax and household rules; your final limit may differ.',
+  furusatoNoCapacity:
+    'No donation above ¥2,000 is estimated to be fully recoverable with these inputs.',
+  furusatoMicReference: 'MIC: how the deduction works',
+  furusatoEstimatedSaving: 'Estimated total tax reduction',
+  furusatoOutOfPocket: 'Estimated personal cost',
+  furusatoOverLimit:
+    'This donation exceeds the estimated limit. The personal cost may exceed ¥2,000.',
   furusatoCredit: 'Furusato Nozei Credit',
-  furusatoIncomeTaxCredit: 'Income Tax Credit',
+  furusatoIncomeTaxCredit: 'Income Tax Reduction',
   furusatoResidentTaxCredit: 'Resident Tax Credit',
 
   // Deductions section

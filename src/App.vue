@@ -890,6 +890,14 @@ const pieSlices = computed((): PieSlice[] => {
 
             <div class="divider"></div>
 
+            <div
+              v-if="results.furusato.incomeDeduction > 0"
+              class="result-row deduction user-deduction-row"
+            >
+              <span>{{ t('furusatoIncomeDeduction') }}</span>
+              <span>- {{ formatCurrency(results.furusato.incomeDeduction) }}</span>
+            </div>
+
             <div class="result-row taxable-income-row">
               <span>
                 {{ t('taxableIncome') }}

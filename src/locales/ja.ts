@@ -101,8 +101,18 @@ export default {
   cashCostContributions: '掛金額 (iDeCo等)',
   disposableIncome: '可処分所得',
   disposableIncomeSub: 'iDeCo等の掛金後',
+  furusatoIncomeDeduction: 'ふるさと納税の寄附金控除（所得控除）',
+  furusatoMaxDonation: 'ふるさと納税の寄附上限額（目安）',
+  furusatoEstimateHelp:
+    '確定申告をする場合の、自己負担2,000円を含む年間寄附額です。今年の所得・社会保険料・各種控除から計算し、住民税の控除は翌年度に適用されます。税額の端数処理前の試算を1円単位で切り捨てています。税額や家族に関する簡易計算を用いるため、実際の上限額とは異なる場合があります。',
+  furusatoNoCapacity: 'この入力条件では、2,000円を超える寄附について全額控除を見込めません。',
+  furusatoMicReference: '総務省：税金の控除について',
+  furusatoEstimatedSaving: '税額軽減の見込額（合計）',
+  furusatoOutOfPocket: '自己負担額（目安）',
+  furusatoOverLimit:
+    '寄附額が上限額の目安を超えています。自己負担が2,000円を超える可能性があります。',
   furusatoCredit: 'ふるさと納税控除',
-  furusatoIncomeTaxCredit: '所得税控除分',
+  furusatoIncomeTaxCredit: '所得税の軽減額',
   furusatoResidentTaxCredit: '住民税控除分',
 
   deductionsSection: '所得控除',

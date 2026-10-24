@@ -2,6 +2,7 @@ import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
 import {
   calculateTaxesAndInsurance,
+  calculateEmploymentIncomeDeduction,
   calculateEmployeeChildSupportContribution,
   getStandardRemunerationGrade,
   type TaxCalculationOptions,
@@ -23,6 +24,7 @@ import {
   DEDUCTION_DEFS,
   DEDUCTION_ORDER,
   calculateDeductionAmount,
+  calculateResidentDeductionAmount,
   getCashCost,
   IDECO_MONTHLY_LIMITS,
 } from '../data/deductions'
@@ -247,7 +249,7 @@ export const useTaxStore = defineStore('tax', () => {
         (sum, e) => sum + Math.max(0, (Number(e.revenue) || 0) - (Number(e.expenses) || 0)),
         0,
       )
-    const gross = salaryGross + bizIncome
+    const totalIncome = salaryGross - calculateEmploymentIncomeDeduction(salaryGross) + bizIncome
     const autoTypes = new Set<DeductionType>([
       'spouse',
       'dependent_general',
@@ -259,7 +261,8 @@ export const useTaxStore = defineStore('tax', () => {
         .filter((e) => !DEDUCTION_DEFS[e.type].isTaxCredit && !autoTypes.has(e.type))
         .reduce(
           (sum, entry) =>
-            sum + calculateDeductionAmount(entry.type, entry.value, gross, idecoMonthlyLimit.value),
+            sum +
+            calculateDeductionAmount(entry.type, entry.value, totalIncome, idecoMonthlyLimit.value),
           0,
         ) +
       autoSpouseDeduction.value +
@@ -267,11 +270,56 @@ export const useTaxStore = defineStore('tax', () => {
     )
   })
 
-  const furusatoNetDonation = computed(() => {
-    const furusato = deductionEntries.value.find((e) => e.type === 'furusato')
-    if (!furusato || !furusato.value) return 0
-    return Math.max(0, furusato.value - 2000)
+  // Keep resident deductions separate: using the income-tax amounts understates
+  // the levy that determines the Furusato ceiling (notably for dependents).
+  const residentSpouseDeduction = computed(() =>
+    Math.min(autoSpouseDeduction.value, (spouseAge.value ?? 0) >= 70 ? 380000 : 330000),
+  )
+  const personalDeductionDifference = computed(
+    () =>
+      autoSpouseDeduction.value -
+      residentSpouseDeduction.value +
+      autoDependentDeductions.value.general *
+        (DEDUCTION_DEFS.dependent_general.personalDifference ?? 0) +
+      autoDependentDeductions.value.specified *
+        (DEDUCTION_DEFS.dependent_specified.personalDifference ?? 0) +
+      autoDependentDeductions.value.aged * (DEDUCTION_DEFS.dependent_aged.personalDifference ?? 0),
+  )
+  const residentAdditionalDeductions = computed(() => {
+    const { salaryGross, bizIncome } = getNhiIncomes()
+    const manual = deductionEntries.value
+      .filter(
+        (e) =>
+          !['spouse', 'dependent_general', 'dependent_specified', 'dependent_aged'].includes(
+            e.type,
+          ),
+      )
+      .reduce(
+        (sum, e) =>
+          sum +
+          calculateResidentDeductionAmount(
+            e.type,
+            e.value,
+            salaryGross - calculateEmploymentIncomeDeduction(salaryGross) + bizIncome,
+            idecoMonthlyLimit.value,
+          ),
+        0,
+      )
+    return (
+      manual +
+      residentSpouseDeduction.value +
+      autoDependentDeductions.value.general *
+        (DEDUCTION_DEFS.dependent_general.residentAmount ?? 0) +
+      autoDependentDeductions.value.specified *
+        (DEDUCTION_DEFS.dependent_specified.residentAmount ?? 0) +
+      autoDependentDeductions.value.aged * (DEDUCTION_DEFS.dependent_aged.residentAmount ?? 0)
+    )
   })
+
+  const furusatoDonation = computed(() =>
+    Math.max(0, deductionEntries.value.find((e) => e.type === 'furusato')?.value ?? 0),
+  )
+  const furusatoNetDonation = computed(() => Math.max(0, furusatoDonation.value - 2000))
 
   const homeLoanCreditAmount = computed(() => {
     const entry = deductionEntries.value.find((e) => e.type === 'home_loan')
@@ -426,7 +474,9 @@ export const useTaxStore = defineStore('tax', () => {
           prefPerCapita: localTaxRates.prefPerCapita,
           cityPerCapita: localTaxRates.cityPerCapita,
           additionalDeductions: totalAdditionalDeductions.value,
-          furusatoNetDonation: furusatoNetDonation.value,
+          residentAdditionalDeductions: residentAdditionalDeductions.value,
+          personalDeductionDifference: personalDeductionDifference.value,
+          furusatoDonation: furusatoDonation.value,
           homeLoanCredit: homeLoanCreditAmount.value,
         },
       }
@@ -438,6 +488,11 @@ export const useTaxStore = defineStore('tax', () => {
     return calculateTaxesAndInsurance(salary, bonus, options)
   })
 
+  const furusatoEstimate = computed(() => results.value.furusato)
+  const furusatoExceedsLimit = computed(
+    () => furusatoDonation.value > Math.max(2000, furusatoEstimate.value.maxDonation),
+  )
+
   const hasIdecoDeduction = computed(() => deductionEntries.value.some((e) => e.type === 'ideco'))
 
   const resultsWithMaxIdeco = computed(() => {
@@ -447,6 +502,7 @@ export const useTaxStore = defineStore('tax', () => {
     return calculateTaxesAndInsurance(salary, bonus, {
       ...options,
       additionalDeductions: (options.additionalDeductions ?? 0) + maxIdecoAnnual,
+      residentAdditionalDeductions: (options.residentAdditionalDeductions ?? 0) + maxIdecoAnnual,
     })
   })
 
@@ -556,7 +612,7 @@ export const useTaxStore = defineStore('tax', () => {
     return calculateDeductionAmount(
       entry.type,
       entry.value,
-      salaryGross + bizIncome,
+      salaryGross - calculateEmploymentIncomeDeduction(salaryGross) + bizIncome,
       idecoMonthlyLimit.value,
     )
   }
@@ -763,6 +819,8 @@ export const useTaxStore = defineStore('tax', () => {
     autoDependentDeductions,
     totalAdditionalDeductions,
     furusatoNetDonation,
+    furusatoEstimate,
+    furusatoExceedsLimit,
     homeLoanCreditAmount,
     municipalityAutoAvailable,
     pensionResult,

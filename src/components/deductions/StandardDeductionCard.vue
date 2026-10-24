@@ -38,38 +38,59 @@ const ntaUrl = computed(() => DEDUCTION_DEFS[props.entry.type].ntaUrl)
 const isCount = computed(() => DEDUCTION_DEFS[props.entry.type].inputIsCount)
 const isFurusato = computed(() => props.entry.type === 'furusato')
 
-const deductionAmount = computed(() => store.deductionAmountFor(props.entry))
-
+const deductionAmount = computed(() =>
+  isFurusato.value
+    ? Math.floor(store.furusatoEstimate.totalTaxSaving + 1e-7)
+    : store.deductionAmountFor(props.entry),
+)
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(value)
 </script>
 
 <template>
   <DeductionCardBase :name="name" @remove="emit('remove')">
-    <label class="deduction-input-label">{{ inputLabel }}</label>
+    <label :for="`deduction-${entry.id}`" class="deduction-input-label">{{ inputLabel }}</label>
     <!-- eslint-disable vue/no-mutating-props -->
-    <UInput v-if="isCount" type="number" v-model.number="entry.value" :min="0" :step="1" />
-    <YenInputNumber v-else v-model="entry.value" :min="0" :step="1000" />
+    <UInput
+      v-if="isCount"
+      :id="`deduction-${entry.id}`"
+      type="number"
+      v-model.number="entry.value"
+      :min="0"
+      :step="1"
+    />
+    <YenInputNumber
+      v-else
+      :id="`deduction-${entry.id}`"
+      v-model="entry.value"
+      :min="0"
+      :step="1000"
+    />
     <!-- eslint-enable vue/no-mutating-props -->
     <div class="deduction-computed">
-      <span class="deduction-computed-label">{{ t('deductionAmount') }}</span>
+      <span class="deduction-computed-label">{{
+        t(isFurusato ? 'furusatoEstimatedSaving' : 'deductionAmount')
+      }}</span>
       <span class="deduction-computed-value">{{ formatCurrency(deductionAmount) }}</span>
     </div>
-    <a
-      v-if="isFurusato"
-      class="furusato-sim-link"
-      href="https://www.furusato-tax.jp/about/simulation"
-      target="_blank"
-      rel="noopener noreferrer"
-      >{{ t('furusatoSimLink') }} ↗</a
+    <p v-if="isFurusato" class="mt-2 text-sm">
+      {{ t('furusatoOutOfPocket') }}:
+      {{ formatCurrency(Math.max(0, Math.ceil(store.furusatoEstimate.outOfPocket - 1e-7))) }}
+    </p>
+    <p
+      v-if="isFurusato && store.furusatoExceedsLimit"
+      role="status"
+      class="mt-2 text-sm text-amber-700 dark:text-amber-300"
     >
+      {{ t('furusatoOverLimit') }}
+    </p>
     <a
       v-if="ntaUrl"
       class="nta-reference-link"
       :href="ntaUrl"
       target="_blank"
       rel="noopener noreferrer"
-      >{{ t('ntaReference') }} ↗</a
+      >{{ t(isFurusato ? 'furusatoMicReference' : 'ntaReference') }} ↗</a
     >
   </DeductionCardBase>
 </template>

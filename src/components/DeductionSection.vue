@@ -5,6 +5,7 @@ import { storeToRefs } from 'pinia'
 import type { MessageSchema } from '../locales'
 import { type DeductionType, DEDUCTION_DEFS } from '../data/deductions'
 import { useTaxStore } from '../stores/tax'
+import { FURUSATO_RULES } from '../data/furusato'
 import SpouseDeductionCard from './deductions/SpouseDeductionCard.vue'
 import DependentDeductionCard from './deductions/DependentDeductionCard.vue'
 import DeductionCard from './deductions/DeductionCard.vue'
@@ -24,6 +25,7 @@ const {
   autoDependentDeductions,
   availableDeductionTypes,
   totalAdditionalDeductions,
+  furusatoEstimate,
 } = storeToRefs(store)
 const { removeDeduction, pushDeductionEntry } = store
 
@@ -73,6 +75,28 @@ function addDeduction(type: DeductionType) {
       {{ t('noDeductions') }}
     </p>
 
+    <div class="furusato-estimate" aria-live="polite">
+      <div class="flex flex-wrap items-baseline justify-between gap-2">
+        <span class="font-semibold">{{ t('furusatoMaxDonation') }}</span>
+        <strong class="text-lg">{{
+          new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(
+            furusatoEstimate.maxDonation,
+          )
+        }}</strong>
+      </div>
+      <p class="mt-2 text-sm">{{ t('furusatoEstimateHelp') }}</p>
+      <p v-if="furusatoEstimate.maxDonation === 0" class="mt-2 text-sm">
+        {{ t('furusatoNoCapacity') }}
+      </p>
+      <a
+        :href="FURUSATO_RULES.sourceUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="mt-2 inline-block text-sm underline"
+        >{{ t('furusatoMicReference') }} ↗</a
+      >
+    </div>
+
     <div class="card-list">
       <SpouseDeductionCard
         v-if="autoSpouseDeduction > 0"
@@ -112,12 +136,36 @@ function addDeduction(type: DeductionType) {
 
     <div class="deduction-total" v-if="deductionEntries.length > 0">
       <span>{{ t('totalAdditionalDeductions') }}</span>
-      <span>{{ new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(totalAdditionalDeductions) }}</span>
+      <span>{{
+        new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(
+          totalAdditionalDeductions,
+        )
+      }}</span>
     </div>
   </div>
 </template>
 
 <style scoped>
+.furusato-estimate {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid #c7d2fe;
+  border-radius: 0.5rem;
+  background: #eef2ff;
+  color: #312e81;
+}
+.furusato-estimate a {
+  color: #4338ca;
+}
+:global(html.dark .furusato-estimate) {
+  border-color: #3730a3;
+  background: #1e1b4b;
+  color: #e0e7ff;
+}
+:global(html.dark .furusato-estimate a) {
+  color: #c7d2fe;
+}
+
 h2 {
   font-size: 1.2rem;
   font-weight: 600;
