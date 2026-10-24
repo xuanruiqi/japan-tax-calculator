@@ -1,37 +1,45 @@
-import { CHILD_SUPPORT_EMPLOYEE_RATE } from '../data/childSupport'
+import { CHILD_SUPPORT_EMPLOYEE_RATE } from '../data/childSupport.ts'
+
+import {
+  calculateFurusato,
+  homeLoanTaxes,
+  incomeTaxRate,
+  type FurusatoCalculationResult,
+} from './furusatoCalculation.ts'
 
 export interface TaxCalculationResult {
-  annualGross: number;
-  healthInsurance: number;
-  kaigoInsurance: number;
-  childSupportContribution: number;
-  pension: number;
-  incomeTax: number;
-  marginalRate: number;        // base bracket rate, e.g. 20
-  effectiveMarginalRate: number; // with 2.1% surtax, e.g. 20.42
-  taxableIncome: number;       // 課税所得額 (after all deductions, before tax)
-  employmentIncomeDeduction: number;  // 給与所得控除
-  employmentIncome: number;           // 給与所得
-  basicExemption: number;             // 基礎控除
-  residentTax: number;
-  residentTaxPrefectural: number;
-  residentTaxMunicipal: number;
-  furusatoIncomeTaxCredit: number;    // ふるさと納税 — income tax credit portion
-  furusatoResidentTaxCredit: number;  // ふるさと納税 — resident tax credit portion
-  homeLoanIncomeTaxCredit: number;    // 住宅ローン控除 — income tax credit portion
-  homeLoanResidentTaxCredit: number;  // 住宅ローン控除 — resident tax credit portion
-  totalDeductions: number;
-  netPay: number;
-  monthlyNet: number;
-  bonusNet: number;
-  employmentInsurance: number;
-  nationalPension: number;
-  nationalHealthInsurance: number;
-  businessIncome: number;
-  healthBracket: number;
-  pensionBracket: number;
-  healthStandardRemuneration: number;
-  pensionStandardRemuneration: number;
+  furusato: FurusatoCalculationResult
+  annualGross: number
+  healthInsurance: number
+  kaigoInsurance: number
+  childSupportContribution: number
+  pension: number
+  incomeTax: number
+  marginalRate: number // base bracket rate, e.g. 20
+  effectiveMarginalRate: number // with 2.1% surtax, e.g. 20.42
+  taxableIncome: number // 課税所得額 (after all deductions, before tax)
+  employmentIncomeDeduction: number // 給与所得控除
+  employmentIncome: number // 給与所得
+  basicExemption: number // 基礎控除
+  residentTax: number
+  residentTaxPrefectural: number
+  residentTaxMunicipal: number
+  furusatoIncomeTaxCredit: number // ふるさと納税 — income tax credit portion
+  furusatoResidentTaxCredit: number // ふるさと納税 — resident tax credit portion
+  homeLoanIncomeTaxCredit: number // 住宅ローン控除 — income tax credit portion
+  homeLoanResidentTaxCredit: number // 住宅ローン控除 — resident tax credit portion
+  totalDeductions: number
+  netPay: number
+  monthlyNet: number
+  bonusNet: number
+  employmentInsurance: number
+  nationalPension: number
+  nationalHealthInsurance: number
+  businessIncome: number
+  healthBracket: number
+  pensionBracket: number
+  healthStandardRemuneration: number
+  pensionStandardRemuneration: number
 }
 
 const brackets = [
@@ -84,30 +92,33 @@ const brackets = [
   { min: 1180000, max: 1240000, value: 1210000 },
   { min: 1240000, max: 1300000, value: 1270000 },
   { min: 1300000, max: 1360000, value: 1330000 },
-  { min: 1360000, max: Infinity, value: 1390000 }
-];
+  { min: 1360000, max: Infinity, value: 1390000 },
+]
 
-export function getStandardRemunerationGrade(salary: number, maxBracketValue: number): { value: number, grade: number } {
-  if (salary <= 0) return { value: 0, grade: 0 };
+export function getStandardRemunerationGrade(
+  salary: number,
+  maxBracketValue: number,
+): { value: number; grade: number } {
+  if (salary <= 0) return { value: 0, grade: 0 }
   for (let i = 0; i < brackets.length; i++) {
-    const bracket = brackets[i];
-    if (!bracket) continue;
+    const bracket = brackets[i]
+    if (!bracket) continue
     if (salary >= bracket.min && salary < bracket.max) {
       if (bracket.value >= maxBracketValue) {
-        const maxIndex = brackets.findIndex(b => b.value === maxBracketValue);
-        return { value: maxBracketValue, grade: maxIndex + 1 };
+        const maxIndex = brackets.findIndex((b) => b.value === maxBracketValue)
+        return { value: maxBracketValue, grade: maxIndex + 1 }
       }
-      return { value: bracket.value, grade: i + 1 };
+      return { value: bracket.value, grade: i + 1 }
     }
   }
-  const maxIndexFallback = brackets.findIndex(b => b.value === maxBracketValue);
-  return { value: maxBracketValue, grade: maxIndexFallback + 1 }; 
+  const maxIndexFallback = brackets.findIndex((b) => b.value === maxBracketValue)
+  return { value: maxBracketValue, grade: maxIndexFallback + 1 }
 }
 
 export interface EmployeeChildSupportContribution {
-  monthly: number;
-  bonus: number;
-  annual: number;
+  monthly: number
+  bonus: number
+  annual: number
 }
 
 /** Uses the health insurance remuneration grades and bonus cap, employee share only. */
@@ -116,254 +127,310 @@ export function calculateEmployeeChildSupportContribution(
   annualBonus: number,
   rate = CHILD_SUPPORT_EMPLOYEE_RATE,
 ): EmployeeChildSupportContribution {
-  const standard = getStandardRemunerationGrade(monthlySalary, 1390000).value;
-  const bonusStandard = Math.min(Math.floor(Math.max(0, annualBonus) / 1000) * 1000, 5730000);
-  const monthly = Math.floor(standard * rate);
-  const bonus = Math.floor(bonusStandard * rate);
-  return { monthly, bonus, annual: monthly * 12 + bonus };
+  const standard = getStandardRemunerationGrade(monthlySalary, 1390000).value
+  const bonusStandard = Math.min(Math.floor(Math.max(0, annualBonus) / 1000) * 1000, 5730000)
+  const monthly = Math.floor(standard * rate)
+  const bonus = Math.floor(bonusStandard * rate)
+  return { monthly, bonus, annual: monthly * 12 + bonus }
 }
 
 export interface TaxCalculationOptions {
-  previousYearGross?: number | null;
-  healthInsuranceRate?: number;
-  kaigoInsuranceRate?: number;
-  childSupportRate?: number; // employee share; defaults to the FY2026 statutory rate
-  pensionRate?: number;
-  employmentInsuranceRate?: number;
-  prefIncomeRate?: number;
-  cityIncomeRate?: number;
-  prefPerCapita?: number;
-  cityPerCapita?: number;
-  primaryJoinsSocialInsurance?: boolean; // whether primary job has SI enrollment (default true)
-  nationalPensionAmount?: number;        // flat 国民年金 amount (when not in 厚生年金)
-  nationalHealthInsuranceAmount?: number; // 国民健康保険 total (when not in 健康保険)
-  additionalSalaryGross?: number; // gross salary from non-primary jobs
-  additionalHealthInsurance?: number;  // health insurance from non-primary workplaces
-  additionalChildSupportContribution?: number; // non-primary insured workplaces
-  additionalKaigoInsurance?: number;   // kaigo insurance from non-primary workplaces
-  additionalPension?: number;          // pension from non-primary workplaces
-  additionalEmploymentInsurance?: number; // employment insurance from non-primary workplaces
-  businessIncome?: number;        // net 事業所得 (revenue - expenses), summed across all entries
-  additionalDeductions?: number;  // sum of all 所得控除 entered by user (excludes furusato)
-  furusatoNetDonation?: number;   // (donation - 2,000) — applied as direct tax credit, not income deduction
-  homeLoanCredit?: number;        // 住宅ローン控除額 — applied before reconstruction surtax
+  previousYearGross?: number | null
+  healthInsuranceRate?: number
+  kaigoInsuranceRate?: number
+  childSupportRate?: number // employee share; defaults to the FY2026 statutory rate
+  pensionRate?: number
+  employmentInsuranceRate?: number
+  prefIncomeRate?: number
+  cityIncomeRate?: number
+  prefPerCapita?: number
+  cityPerCapita?: number
+  primaryJoinsSocialInsurance?: boolean // whether primary job has SI enrollment (default true)
+  nationalPensionAmount?: number // flat 国民年金 amount (when not in 厚生年金)
+  nationalHealthInsuranceAmount?: number // 国民健康保険 total (when not in 健康保険)
+  additionalSalaryGross?: number // gross salary from non-primary jobs
+  additionalHealthInsurance?: number // health insurance from non-primary workplaces
+  additionalChildSupportContribution?: number // non-primary insured workplaces
+  additionalKaigoInsurance?: number // kaigo insurance from non-primary workplaces
+  additionalPension?: number // pension from non-primary workplaces
+  additionalEmploymentInsurance?: number // employment insurance from non-primary workplaces
+  businessIncome?: number // net 事業所得 (revenue - expenses), summed across all entries
+  additionalDeductions?: number // sum of all 所得控除 entered by user (excludes furusato)
+  residentAdditionalDeductions?: number // defaults to additionalDeductions for legacy callers
+  personalDeductionDifference?: number // spouse/dependents only, excluding the basic difference
+  furusatoDonation?: number // full annual donation including the personal contribution
+  furusatoNetDonation?: number // donation - 2,000; tax-return income deduction and capped resident credits
+  homeLoanCredit?: number // 住宅ローン控除額 — applied before reconstruction surtax
 }
 
-export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: number, options: TaxCalculationOptions = {}): TaxCalculationResult {
+export function calculateTaxesAndInsurance(
+  monthlySalary: number,
+  annualBonus: number,
+  options: TaxCalculationOptions = {},
+): TaxCalculationResult {
   // --- Social Insurance ---
-  const HEALTH_INS_RATE = options.healthInsuranceRate !== undefined ? options.healthInsuranceRate : 0.0499; // Default 9.98% / 2
-  const KAIGO_RATE = options.kaigoInsuranceRate !== undefined ? options.kaigoInsuranceRate : 0.0;
-  const PENSION_RATE = options.pensionRate !== undefined ? options.pensionRate : 0.0915;    // Default 18.3% / 2
-  const EMP_INS_RATE = options.employmentInsuranceRate !== undefined ? options.employmentInsuranceRate : 0.006; // Default 0.6%
-  const previousYearGross = options.previousYearGross ?? null;
+  const HEALTH_INS_RATE =
+    options.healthInsuranceRate !== undefined ? options.healthInsuranceRate : 0.0499 // Default 9.98% / 2
+  const KAIGO_RATE = options.kaigoInsuranceRate !== undefined ? options.kaigoInsuranceRate : 0.0
+  const PENSION_RATE = options.pensionRate !== undefined ? options.pensionRate : 0.0915 // Default 18.3% / 2
+  const EMP_INS_RATE =
+    options.employmentInsuranceRate !== undefined ? options.employmentInsuranceRate : 0.006 // Default 0.6%
+  const previousYearGross = options.previousYearGross ?? null
 
-  const primaryJoinsSI = options.primaryJoinsSocialInsurance !== false; // default true
-  const siSalary = primaryJoinsSI ? monthlySalary : 0;
-  const siBonus = primaryJoinsSI ? annualBonus : 0;
+  const primaryJoinsSI = options.primaryJoinsSocialInsurance !== false // default true
+  const siSalary = primaryJoinsSI ? monthlySalary : 0
+  const siBonus = primaryJoinsSI ? annualBonus : 0
 
-  const healthObj = getStandardRemunerationGrade(siSalary, 1390000);
-  const pensionObj = getStandardRemunerationGrade(siSalary, 650000);
+  const healthObj = getStandardRemunerationGrade(siSalary, 1390000)
+  const pensionObj = getStandardRemunerationGrade(siSalary, 650000)
 
-  const monthlyStandard = healthObj.value;
-  const healthBracket = healthObj.grade;
-  
-  const monthlyStandardPension = pensionObj.value;
+  const monthlyStandard = healthObj.value
+  const healthBracket = healthObj.grade
+
+  const monthlyStandardPension = pensionObj.value
   // Pension grade starts at Health grade 4 (88,000 JPY), so Pension Grade = Health Grade - 3
-  const pensionBracket = pensionObj.grade > 0 ? Math.max(1, pensionObj.grade - 3) : 0;
+  const pensionBracket = pensionObj.grade > 0 ? Math.max(1, pensionObj.grade - 3) : 0
 
-  const monthlyHealth = Math.floor(monthlyStandard * HEALTH_INS_RATE);
-  const monthlyKaigo = Math.floor(monthlyStandard * KAIGO_RATE);
-  const monthlyPension = Math.floor(monthlyStandardPension * PENSION_RATE);
+  const monthlyHealth = Math.floor(monthlyStandard * HEALTH_INS_RATE)
+  const monthlyKaigo = Math.floor(monthlyStandard * KAIGO_RATE)
+  const monthlyPension = Math.floor(monthlyStandardPension * PENSION_RATE)
 
-  const bonusStandardHealth = Math.min(Math.floor(siBonus / 1000) * 1000, 5730000);
-  const bonusStandardPension = Math.min(Math.floor(siBonus / 1000) * 1000, 1500000);
+  const bonusStandardHealth = Math.min(Math.floor(siBonus / 1000) * 1000, 5730000)
+  const bonusStandardPension = Math.min(Math.floor(siBonus / 1000) * 1000, 1500000)
 
-  const bonusHealth = Math.floor(bonusStandardHealth * HEALTH_INS_RATE);
-  const bonusKaigo = Math.floor(bonusStandardHealth * KAIGO_RATE);
-  const bonusPension = Math.floor(bonusStandardPension * PENSION_RATE);
+  const bonusHealth = Math.floor(bonusStandardHealth * HEALTH_INS_RATE)
+  const bonusKaigo = Math.floor(bonusStandardHealth * KAIGO_RATE)
+  const bonusPension = Math.floor(bonusStandardPension * PENSION_RATE)
 
-  const childSupport = calculateEmployeeChildSupportContribution(siSalary, siBonus, options.childSupportRate);
-  const annualChildSupport = childSupport.annual + (options.additionalChildSupportContribution ?? 0);
+  const childSupport = calculateEmployeeChildSupportContribution(
+    siSalary,
+    siBonus,
+    options.childSupportRate,
+  )
+  const annualChildSupport = childSupport.annual + (options.additionalChildSupportContribution ?? 0)
 
-  const primaryAnnualHealth = monthlyHealth * 12 + bonusHealth;
-  const primaryAnnualKaigo = monthlyKaigo * 12 + bonusKaigo;
-  const primaryAnnualPension = monthlyPension * 12 + bonusPension;
+  const primaryAnnualHealth = monthlyHealth * 12 + bonusHealth
+  const primaryAnnualKaigo = monthlyKaigo * 12 + bonusKaigo
+  const primaryAnnualPension = monthlyPension * 12 + bonusPension
 
-  const annualHealth = primaryAnnualHealth + (options.additionalHealthInsurance ?? 0);
-  const annualKaigo = primaryAnnualKaigo + (options.additionalKaigoInsurance ?? 0);
-  const annualPension = primaryAnnualPension + (options.additionalPension ?? 0);
+  const annualHealth = primaryAnnualHealth + (options.additionalHealthInsurance ?? 0)
+  const annualKaigo = primaryAnnualKaigo + (options.additionalKaigoInsurance ?? 0)
+  const annualPension = primaryAnnualPension + (options.additionalPension ?? 0)
 
   // --- Income ---
-  const primarySalaryGross = monthlySalary * 12 + annualBonus;
-  const additionalSalaryGross = options.additionalSalaryGross ?? 0;
-  const totalSalaryGross = primarySalaryGross + additionalSalaryGross;
-  const businessIncome = options.businessIncome ?? 0;
-  const annualGross = totalSalaryGross + businessIncome;
+  const primarySalaryGross = monthlySalary * 12 + annualBonus
+  const additionalSalaryGross = options.additionalSalaryGross ?? 0
+  const totalSalaryGross = primarySalaryGross + additionalSalaryGross
+  const businessIncome = options.businessIncome ?? 0
+  const annualGross = totalSalaryGross + businessIncome
 
   // --- Employment Insurance (雇用保険) — calculated on primary salary gross ---
-  const annualEmploymentInsurance = Math.floor(primarySalaryGross * EMP_INS_RATE) + (options.additionalEmploymentInsurance ?? 0);
-  const monthlyEmploymentInsurance = Math.floor(monthlySalary * EMP_INS_RATE);
+  const annualEmploymentInsurance =
+    Math.floor(primarySalaryGross * EMP_INS_RATE) + (options.additionalEmploymentInsurance ?? 0)
+  const monthlyEmploymentInsurance = Math.floor(monthlySalary * EMP_INS_RATE)
 
-  const nationalPension = options.nationalPensionAmount ?? 0;
-  const nationalHealthInsurance = options.nationalHealthInsuranceAmount ?? 0;
-  const totalSocialInsurance = annualChildSupport + annualHealth + annualKaigo + annualPension + nationalPension + nationalHealthInsurance + annualEmploymentInsurance;
+  const nationalPension = options.nationalPensionAmount ?? 0
+  const nationalHealthInsurance = options.nationalHealthInsuranceAmount ?? 0
+  const totalSocialInsurance =
+    annualChildSupport +
+    annualHealth +
+    annualKaigo +
+    annualPension +
+    nationalPension +
+    nationalHealthInsurance +
+    annualEmploymentInsurance
 
   // --- Employment Income Deduction (給与所得控除) — on total salary gross ---
-  let employmentIncomeDeduction = 0;
-  if (totalSalaryGross <= 1625000) {
-    employmentIncomeDeduction = Math.min(totalSalaryGross, 550000);
-  } else if (totalSalaryGross <= 1800000) {
-    employmentIncomeDeduction = totalSalaryGross * 0.4 - 100000;
-  } else if (totalSalaryGross <= 3600000) {
-    employmentIncomeDeduction = totalSalaryGross * 0.3 + 80000;
-  } else if (totalSalaryGross <= 6600000) {
-    employmentIncomeDeduction = totalSalaryGross * 0.2 + 440000;
-  } else if (totalSalaryGross <= 8500000) {
-    employmentIncomeDeduction = totalSalaryGross * 0.1 + 1100000;
-  } else {
-    employmentIncomeDeduction = 1950000;
-  }
+  const employmentIncomeDeduction = calculateEmploymentIncomeDeduction(totalSalaryGross)
 
-  const employmentIncome = Math.max(0, totalSalaryGross - employmentIncomeDeduction);
-  const totalIncome = employmentIncome + businessIncome;
+  const employmentIncome = Math.max(0, totalSalaryGross - employmentIncomeDeduction)
+  const totalIncome = employmentIncome + businessIncome
 
   // --- Basic Exemption (令和7年分以降 / FY2025+) ---
   // Source: https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1199.htm
-  let incomeTaxBasicExemption: number;
-  if      (totalIncome <= 1320000)  incomeTaxBasicExemption = 950000;
-  else if (totalIncome <= 3360000)  incomeTaxBasicExemption = 880000;
-  else if (totalIncome <= 4890000)  incomeTaxBasicExemption = 680000;
-  else if (totalIncome <= 6550000)  incomeTaxBasicExemption = 630000;
-  else if (totalIncome <= 23500000) incomeTaxBasicExemption = 580000;
-  else if (totalIncome <= 24000000) incomeTaxBasicExemption = 480000;
-  else if (totalIncome <= 24500000) incomeTaxBasicExemption = 320000;
-  else if (totalIncome <= 25000000) incomeTaxBasicExemption = 160000;
-  else                              incomeTaxBasicExemption = 0;
+  let incomeTaxBasicExemption: number
+  if (totalIncome <= 1320000) incomeTaxBasicExemption = 950000
+  else if (totalIncome <= 3360000) incomeTaxBasicExemption = 880000
+  else if (totalIncome <= 4890000) incomeTaxBasicExemption = 680000
+  else if (totalIncome <= 6550000) incomeTaxBasicExemption = 630000
+  else if (totalIncome <= 23500000) incomeTaxBasicExemption = 580000
+  else if (totalIncome <= 24000000) incomeTaxBasicExemption = 480000
+  else if (totalIncome <= 24500000) incomeTaxBasicExemption = 320000
+  else if (totalIncome <= 25000000) incomeTaxBasicExemption = 160000
+  else incomeTaxBasicExemption = 0
 
   // --- Taxable Income ---
-  const extraDeductions = options.additionalDeductions ?? 0;
-  const taxableIncomeTax = Math.max(0, Math.floor((totalIncome - totalSocialInsurance - incomeTaxBasicExemption - extraDeductions) / 1000) * 1000);
+  const extraDeductions = options.additionalDeductions ?? 0
+  const taxableIncomeBeforeDonation = Math.max(
+    0,
+    totalIncome - totalSocialInsurance - incomeTaxBasicExemption - extraDeductions,
+  )
+  const currentResidentDeductions = options.residentAdditionalDeductions ?? extraDeductions
+  const personalDifference =
+    (options.personalDeductionDifference ?? 0) + (totalIncome <= 25000000 ? 50000 : 0)
+  const currentResidentTaxable = residentTaxableIncome(
+    totalIncome,
+    totalSocialInsurance,
+    currentResidentDeductions,
+  )
+  const prefRate = options.prefIncomeRate ?? 0.04
+  const cityRate = options.cityIncomeRate ?? 0.06
+  const currentResidentLevy = residentIncomeLevy(
+    totalIncome,
+    currentResidentTaxable,
+    personalDifference,
+    prefRate,
+    cityRate,
+  )
+  const furusatoNet = Math.max(0, options.furusatoNetDonation ?? 0)
+  const furusato = calculateFurusato(
+    {
+      totalIncome,
+      taxableIncome: taxableIncomeBeforeDonation,
+      residentTaxableIncome: currentResidentTaxable,
+      residentIncomeLevy: currentResidentLevy.prefectural + currentResidentLevy.municipal,
+      personalDeductionDifference: personalDifference,
+      incomeTaxBasicExemption,
+      homeLoanCredit: options.homeLoanCredit ?? 0,
+    },
+    options.furusatoDonation ?? (furusatoNet > 0 ? furusatoNet + 2000 : 0),
+  )
+  const taxableIncomeTax = Math.max(
+    0,
+    Math.floor((taxableIncomeBeforeDonation - furusato.incomeDeduction) / 1000) * 1000,
+  )
 
   // --- Resident Tax Pre-Calculation (based on previous year income if provided) ---
-  const residentTaxBaseGross = (previousYearGross !== null && previousYearGross >= 0) ? previousYearGross : annualGross;
-  
-  let residentEmploymentIncomeDeduction = 0;
-  if (residentTaxBaseGross <= 1625000) residentEmploymentIncomeDeduction = Math.min(residentTaxBaseGross, 550000);
-  else if (residentTaxBaseGross <= 1800000) residentEmploymentIncomeDeduction = residentTaxBaseGross * 0.4 - 100000;
-  else if (residentTaxBaseGross <= 3600000) residentEmploymentIncomeDeduction = residentTaxBaseGross * 0.3 + 80000;
-  else if (residentTaxBaseGross <= 6600000) residentEmploymentIncomeDeduction = residentTaxBaseGross * 0.2 + 440000;
-  else if (residentTaxBaseGross <= 8500000) residentEmploymentIncomeDeduction = residentTaxBaseGross * 0.1 + 1100000;
-  else residentEmploymentIncomeDeduction = 1950000;
+  const residentTaxBaseGross =
+    previousYearGross !== null && previousYearGross >= 0 ? previousYearGross : annualGross
 
-  const residentEmploymentIncome = Math.max(0, residentTaxBaseGross - residentEmploymentIncomeDeduction);
-  
-  let residentSocialInsurance = totalSocialInsurance;
+  let residentEmploymentIncomeDeduction = 0
+  if (residentTaxBaseGross <= 1625000)
+    residentEmploymentIncomeDeduction = Math.min(residentTaxBaseGross, 550000)
+  else if (residentTaxBaseGross <= 1800000)
+    residentEmploymentIncomeDeduction = residentTaxBaseGross * 0.4 - 100000
+  else if (residentTaxBaseGross <= 3600000)
+    residentEmploymentIncomeDeduction = residentTaxBaseGross * 0.3 + 80000
+  else if (residentTaxBaseGross <= 6600000)
+    residentEmploymentIncomeDeduction = residentTaxBaseGross * 0.2 + 440000
+  else if (residentTaxBaseGross <= 8500000)
+    residentEmploymentIncomeDeduction = residentTaxBaseGross * 0.1 + 1100000
+  else residentEmploymentIncomeDeduction = 1950000
+
+  const residentEmploymentIncome =
+    previousYearGross !== null && previousYearGross >= 0
+      ? Math.max(0, residentTaxBaseGross - residentEmploymentIncomeDeduction)
+      : totalIncome
+
+  let residentSocialInsurance = totalSocialInsurance
   if (previousYearGross !== null && previousYearGross >= 0) {
     // Estimate previous year social insurance as ~14.14% of gross
-    residentSocialInsurance = Math.floor(previousYearGross * 0.1414);
+    residentSocialInsurance = Math.floor(previousYearGross * 0.1414)
   }
 
-  let actualResidentTaxBasicExemption: number;
-  if      (residentTaxBaseGross <= 23500000) actualResidentTaxBasicExemption = 480000;
-  else if (residentTaxBaseGross <= 24000000) actualResidentTaxBasicExemption = 380000;
-  else if (residentTaxBaseGross <= 24500000) actualResidentTaxBasicExemption = 290000;
-  else if (residentTaxBaseGross <= 25000000) actualResidentTaxBasicExemption = 150000;
-  else                                       actualResidentTaxBasicExemption = 0;
+  const hasPreviousYear = previousYearGross !== null && previousYearGross >= 0
+  const taxableResidentTax = residentTaxableIncome(
+    residentEmploymentIncome,
+    residentSocialInsurance,
+    hasPreviousYear ? 0 : currentResidentDeductions,
+  )
+  const residentLevy = residentIncomeLevy(
+    residentEmploymentIncome,
+    taxableResidentTax,
+    hasPreviousYear ? (residentEmploymentIncome <= 25000000 ? 50000 : 0) : personalDifference,
+    prefRate,
+    cityRate,
+  )
 
-  // Apply additional deductions (iDeCo etc.) to resident tax base only when using current-year income
-  // (when previousYearGross is provided we have no data on that year's deductions, so skip)
-  const residentExtraDeductions = (previousYearGross !== null && previousYearGross >= 0) ? 0 : extraDeductions;
-  const taxableResidentTax = Math.max(0, Math.floor((residentEmploymentIncome - residentSocialInsurance - actualResidentTaxBasicExemption - residentExtraDeductions) / 1000) * 1000);
+  // On a tax return the donation reduces taxable income before progressive tax
+  // and home-loan credits. It is not a refundable credit at the top marginal rate.
+  const marginalRate = incomeTaxRate(taxableIncomeTax) * 100
+  const effectiveMarginalRate = parseFloat((marginalRate * 1.021).toFixed(3))
+  const homeLoan = homeLoanTaxes(
+    taxableIncomeTax,
+    options.homeLoanCredit ?? 0,
+    incomeTaxBasicExemption,
+  )
+  const beforeDonation = homeLoanTaxes(
+    Math.floor(taxableIncomeBeforeDonation / 1000) * 1000,
+    options.homeLoanCredit ?? 0,
+    incomeTaxBasicExemption,
+  )
+  const homeLoanIncomeTaxCredit = homeLoan.incomeCredit
+  const incomeTax = Math.floor(homeLoan.incomeTax / 100) * 100
+  const furusatoIncomeTaxCredit = Math.floor(beforeDonation.incomeTax / 100) * 100 - incomeTax
+  const availableResidentLevy =
+    Math.floor(residentLevy.prefectural / 100) * 100 +
+    Math.floor(residentLevy.municipal / 100) * 100
+  const homeLoanResidentTaxCredit = Math.min(homeLoan.residentCredit, availableResidentLevy)
+  const residentIncomeLeviedPrefectural = residentLevy.prefectural
+  const residentIncomeLeviedMunicipal = residentLevy.municipal
 
-  // --- Income Tax ---
-  let baseIncomeTax = 0;
-  let marginalRate = 0;
-  if (taxableIncomeTax <= 1949000)       { baseIncomeTax = taxableIncomeTax * 0.05;              marginalRate = 5;  }
-  else if (taxableIncomeTax <= 3299000)  { baseIncomeTax = taxableIncomeTax * 0.10 - 97500;      marginalRate = 10; }
-  else if (taxableIncomeTax <= 6949000)  { baseIncomeTax = taxableIncomeTax * 0.20 - 427500;     marginalRate = 20; }
-  else if (taxableIncomeTax <= 8999000)  { baseIncomeTax = taxableIncomeTax * 0.23 - 636000;     marginalRate = 23; }
-  else if (taxableIncomeTax <= 17999000) { baseIncomeTax = taxableIncomeTax * 0.33 - 1536000;    marginalRate = 33; }
-  else if (taxableIncomeTax <= 39999000) { baseIncomeTax = taxableIncomeTax * 0.40 - 2796000;    marginalRate = 40; }
-  else                                   { baseIncomeTax = taxableIncomeTax * 0.45 - 4796000;    marginalRate = 45; }
-
-  const effectiveMarginalRate = parseFloat((marginalRate * 1.021).toFixed(3));
-
-  // Home loan credit is applied BEFORE the reconstruction surtax (per NTA rules):
-  //   所得税額 → 住宅ローン控除 → 基準所得税額 → ×1.021 → 復興特別所得税
-  const rawHomeLoanCredit = options.homeLoanCredit ?? 0;
-  const homeLoanIncomeTaxCredit = Math.min(rawHomeLoanCredit, Math.floor(baseIncomeTax));
-  const afterHomeLoanBase = Math.max(0, Math.floor(baseIncomeTax) - homeLoanIncomeTaxCredit);
-
-  // Reconstruction tax (2.1%) applied to base after home loan credit
-  const incomeTax = Math.floor(afterHomeLoanBase * 1.021 / 100) * 100;
-
-  // Home loan resident tax spillover: remainder up to min(97500, taxableIncome × 5%)
-  const homeLoanRemainder = rawHomeLoanCredit - homeLoanIncomeTaxCredit;
-  const homeLoanResidentTaxLimit = Math.min(97500, Math.floor(taxableIncomeTax * 0.05));
-  let homeLoanResidentTaxCredit = Math.min(homeLoanRemainder, homeLoanResidentTaxLimit);
-
-  // --- Resident Tax ---
-  // Income-based levied amount
-  let residentIncomeLeviedPrefectural = taxableResidentTax * (options.prefIncomeRate !== undefined ? options.prefIncomeRate : 0.04);
-  let residentIncomeLeviedMunicipal = taxableResidentTax * (options.cityIncomeRate !== undefined ? options.cityIncomeRate : 0.06);
-
-  // Adjusted deduction (simplified, total 2500 -> 1000 Prefectural, 1500 Municipal)
-  residentIncomeLeviedPrefectural -= 1000;
-  if (residentIncomeLeviedPrefectural < 0) residentIncomeLeviedPrefectural = 0;
-
-  residentIncomeLeviedMunicipal -= 1500;
-  if (residentIncomeLeviedMunicipal < 0) residentIncomeLeviedMunicipal = 0;
-  
   // Per capita rate
-  const residentPerCapitaPrefectural = options.prefPerCapita !== undefined ? options.prefPerCapita : 1500;
-  const residentPerCapitaMunicipal = options.cityPerCapita !== undefined ? options.cityPerCapita : 3500;
-  
-  // If extremely low income, resident tax is 0. 
+  const residentPerCapitaPrefectural =
+    options.prefPerCapita !== undefined ? options.prefPerCapita : 1500
+  const residentPerCapitaMunicipal =
+    options.cityPerCapita !== undefined ? options.cityPerCapita : 3500
+
+  // If extremely low income, resident tax is 0.
   // Simplified logic, Tokyo minimum income for single is 1,000,000 for per capita, 450k for income levied.
-  let residentTaxPrefectural = 0;
-  let residentTaxMunicipal = 0;
-  
+  let residentTaxPrefectural = 0
+  let residentTaxMunicipal = 0
+
   if (residentEmploymentIncome > 450000) {
-    residentTaxPrefectural = residentIncomeLeviedPrefectural + residentPerCapitaPrefectural;
-    residentTaxMunicipal = residentIncomeLeviedMunicipal + residentPerCapitaMunicipal;
+    residentTaxPrefectural = residentIncomeLeviedPrefectural + residentPerCapitaPrefectural
+    residentTaxMunicipal = residentIncomeLeviedMunicipal + residentPerCapitaMunicipal
   }
 
-  const roundedResidentTaxPrefectural = Math.floor(residentTaxPrefectural / 100) * 100;
-  const roundedResidentTaxMunicipal = Math.floor(residentTaxMunicipal / 100) * 100;
-  const roundedResidentTax = roundedResidentTaxPrefectural + roundedResidentTaxMunicipal;
+  const roundedResidentTaxPrefectural = Math.floor(residentTaxPrefectural / 100) * 100
+  const roundedResidentTaxMunicipal = Math.floor(residentTaxMunicipal / 100) * 100
+  const roundedResidentTax = roundedResidentTaxPrefectural + roundedResidentTaxMunicipal
 
-  // --- Home Loan Resident Tax Credit ---
-  // Cap the resident tax credit by the actual resident tax available
-  homeLoanResidentTaxCredit = Math.min(homeLoanResidentTaxCredit, roundedResidentTax);
-  const residentTaxAfterHomeLoan = roundedResidentTax - homeLoanResidentTaxCredit;
+  // Donation credits cannot offset per-capita taxes. The Furusato estimate is
+  // always based on the donation year's income, even with a prior-year override.
+  const furusatoResidentTaxCredit = Math.floor(
+    Math.min(
+      Math.max(0, availableResidentLevy - homeLoanResidentTaxCredit),
+      furusato.residentTaxCredit,
+    ),
+  )
+  const adjustedIncomeTax = incomeTax
+  const adjustedResidentTax = Math.max(
+    0,
+    roundedResidentTax - homeLoanResidentTaxCredit - furusatoResidentTaxCredit,
+  )
 
-  // --- Furusato Nozei Tax Credits ---
-  // The net donation (amount - 2000) is returned entirely via direct tax credits:
-  //   income tax credit = netDonation × effectiveMarginalRate
-  //   resident tax credit = remainder (via 住民税特例控除)
-  const furusatoNet = options.furusatoNetDonation ?? 0;
-  const furusatoIncomeTaxCredit = Math.min(incomeTax, Math.floor(furusatoNet * effectiveMarginalRate / 100));
-  const furusatoResidentTaxCredit = Math.min(residentTaxAfterHomeLoan, furusatoNet - furusatoIncomeTaxCredit);
-
-  const adjustedIncomeTax = incomeTax - furusatoIncomeTaxCredit;
-  const adjustedResidentTax = residentTaxAfterHomeLoan - furusatoResidentTaxCredit;
-
-  const totalDeductions = totalSocialInsurance + adjustedIncomeTax + adjustedResidentTax;
-  const netPay = annualGross - totalDeductions;
+  const totalDeductions = totalSocialInsurance + adjustedIncomeTax + adjustedResidentTax
+  const netPay = annualGross - totalDeductions
 
   // Monthly/Bonus breakdown approximation
-  let monthlyNet = 0;
-  let bonusNet = 0;
-  
+  let monthlyNet = 0
+  let bonusNet = 0
+
   if (annualGross > 0) {
-    monthlyNet = monthlySalary - childSupport.monthly - monthlyHealth - monthlyKaigo - monthlyPension - monthlyEmploymentInsurance - Math.floor((adjustedIncomeTax + adjustedResidentTax) * (monthlySalary / annualGross));
+    monthlyNet =
+      monthlySalary -
+      childSupport.monthly -
+      monthlyHealth -
+      monthlyKaigo -
+      monthlyPension -
+      monthlyEmploymentInsurance -
+      Math.floor((adjustedIncomeTax + adjustedResidentTax) * (monthlySalary / annualGross))
     if (annualBonus > 0) {
-      const bonusEmploymentInsurance = Math.floor(annualBonus * EMP_INS_RATE);
-      bonusNet = annualBonus - childSupport.bonus - bonusHealth - bonusKaigo - bonusPension - bonusEmploymentInsurance - Math.floor((adjustedIncomeTax + adjustedResidentTax) * (annualBonus / annualGross));
+      const bonusEmploymentInsurance = Math.floor(annualBonus * EMP_INS_RATE)
+      bonusNet =
+        annualBonus -
+        childSupport.bonus -
+        bonusHealth -
+        bonusKaigo -
+        bonusPension -
+        bonusEmploymentInsurance -
+        Math.floor((adjustedIncomeTax + adjustedResidentTax) * (annualBonus / annualGross))
     }
   }
 
   return {
+    furusato,
     annualGross,
     healthInsurance: annualHealth,
     childSupportContribution: annualChildSupport,
@@ -394,6 +461,77 @@ export function calculateTaxesAndInsurance(monthlySalary: number, annualBonus: n
     healthBracket,
     pensionBracket,
     healthStandardRemuneration: monthlyStandard,
-    pensionStandardRemuneration: monthlyStandardPension
-  };
+    pensionStandardRemuneration: monthlyStandardPension,
+  }
+}
+
+// Resident basic exemption is based on total income, not gross receipts.
+// https://www.city.hiroshima.lg.jp/living/zei/1006016/1025578/1003372.html
+function residentTaxableIncome(
+  totalIncome: number,
+  socialInsurance: number,
+  deductions: number,
+): number {
+  const basic =
+    totalIncome <= 24000000
+      ? 430000
+      : totalIncome <= 24500000
+        ? 290000
+        : totalIncome <= 25000000
+          ? 150000
+          : 0
+  return Math.max(0, Math.floor((totalIncome - socialInsurance - basic - deductions) / 1000) * 1000)
+}
+
+interface ResidentIncomeLevy {
+  prefectural: number
+  municipal: number
+}
+
+function residentIncomeLevy(
+  totalIncome: number,
+  taxableIncome: number,
+  personalDifference: number,
+  prefRate: number,
+  cityRate: number,
+): ResidentIncomeLevy {
+  // Retain the app's simplified single-person exemption threshold.
+  if (totalIncome <= 450000) return { prefectural: 0, municipal: 0 }
+  const adjustment =
+    totalIncome > 25000000
+      ? 0
+      : 0.05 *
+        (taxableIncome <= 2000000
+          ? Math.min(personalDifference, taxableIncome)
+          : Math.max(50000, personalDifference - (taxableIncome - 2000000)))
+  const totalRate = prefRate + cityRate
+  return {
+    prefectural: Math.max(
+      0,
+      taxableIncome * prefRate - (totalRate > 0 ? (adjustment * prefRate) / totalRate : 0),
+    ),
+    municipal: Math.max(
+      0,
+      taxableIncome * cityRate - (totalRate > 0 ? (adjustment * cityRate) / totalRate : 0),
+    ),
+  }
+}
+
+export function calculateEmploymentIncomeDeduction(totalSalaryGross: number): number {
+  let employmentIncomeDeduction = 0
+  if (totalSalaryGross <= 1625000) {
+    employmentIncomeDeduction = Math.min(totalSalaryGross, 550000)
+  } else if (totalSalaryGross <= 1800000) {
+    employmentIncomeDeduction = totalSalaryGross * 0.4 - 100000
+  } else if (totalSalaryGross <= 3600000) {
+    employmentIncomeDeduction = totalSalaryGross * 0.3 + 80000
+  } else if (totalSalaryGross <= 6600000) {
+    employmentIncomeDeduction = totalSalaryGross * 0.2 + 440000
+  } else if (totalSalaryGross <= 8500000) {
+    employmentIncomeDeduction = totalSalaryGross * 0.1 + 1100000
+  } else {
+    employmentIncomeDeduction = 1950000
+  }
+
+  return employmentIncomeDeduction
 }

@@ -1,6 +1,7 @@
 // Japan income deductions (所得控除) definitions and calculation logic
 
-import type { HomeLoanParams } from './homeLoan';
+import type { HomeLoanParams } from './homeLoan'
+import { FURUSATO_RULES } from './furusato.ts'
 
 /**
  * iDeCo monthly contribution limits (JPY), effective from the December 2026 contribution
@@ -13,11 +14,11 @@ export const IDECO_MONTHLY_LIMITS = {
   selfEmployed: 75000, // 第1号被保険者 (incl. 国民年金基金 / 付加保険料)
   employee: 62000, // 第2号被保険者
   homemaker: 23000, // 第3号被保険者
-} as const;
+} as const
 
 /** Explainer for the December 2026 iDeCo reform (SBI証券) — replace with NTA once published. */
 export const IDECO_REFORM_2026_URL =
-  'https://site2.sbisec.co.jp/ETGate/?OutSide=on&_ControlID=WPLETmgR001Control&_PageID=WPLETmgR001Mdtl30&_DataStoreID=DSWPLETmgR001Control&_ActionID=DefaultAID&getFlg=on&burl=search_dc&cat1=dc&cat2=none&dir=info&file=dc_info260127_system_amendment.html';
+  'https://site2.sbisec.co.jp/ETGate/?OutSide=on&_ControlID=WPLETmgR001Control&_PageID=WPLETmgR001Mdtl30&_DataStoreID=DSWPLETmgR001Control&_ActionID=DefaultAID&getFlg=on&burl=search_dc&cat1=dc&cat2=none&dir=info&file=dc_info260127_system_amendment.html'
 
 export type DeductionType =
   | 'life_insurance'
@@ -29,29 +30,31 @@ export type DeductionType =
   | 'dependent_general'
   | 'dependent_specified'
   | 'dependent_aged'
-  | 'home_loan';
+  | 'home_loan'
 
 export interface DeductionEntry {
-  id: string;
-  type: DeductionType;
-  value: number; // user-supplied amount or count
-  homeLoanParams?: HomeLoanParams; // only for home_loan type
+  id: string
+  type: DeductionType
+  value: number // user-supplied amount or count
+  homeLoanParams?: HomeLoanParams // only for home_loan type
 }
 
 export interface DeductionMeta {
-  type: DeductionType;
-  nameEn: string;
-  nameJa: string;
-  descEn: string;
-  descJa: string;
-  inputLabelEn: string;
-  inputLabelJa: string;
-  inputIsCount: boolean;  // true = integer count, false = JPY amount
-  maxInput?: number;      // soft cap hint shown to user
-  hasCashCost?: boolean;  // true if the contribution itself leaves the user's pocket (e.g. iDeCo)
-  isTaxCredit?: boolean;  // true if this offsets taxes directly rather than reducing taxable income
-  hasWizard?: boolean;    // true if this type uses a wizard instead of a simple input field
-  ntaUrl?: string;        // National Tax Agency page explaining this deduction
+  type: DeductionType
+  nameEn: string
+  nameJa: string
+  descEn: string
+  descJa: string
+  inputLabelEn: string
+  inputLabelJa: string
+  inputIsCount: boolean // true = integer count, false = JPY amount
+  maxInput?: number // soft cap hint shown to user
+  hasCashCost?: boolean // true if the contribution itself leaves the user's pocket (e.g. iDeCo)
+  isTaxCredit?: boolean // true if this offsets taxes directly rather than reducing taxable income
+  hasWizard?: boolean // true if this type uses a wizard instead of a simple input field
+  residentAmount?: number // per dependent, for resident-tax deductions
+  personalDifference?: number // statutory income/resident personal deduction difference
+  ntaUrl?: string // National Tax Agency page explaining this deduction
 }
 
 export const DEDUCTION_DEFS: Record<DeductionType, DeductionMeta> = {
@@ -94,14 +97,14 @@ export const DEDUCTION_DEFS: Record<DeductionType, DeductionMeta> = {
     type: 'furusato',
     nameEn: 'Furusato Nozei',
     nameJa: 'ふるさと納税',
-    descEn: 'Total donations — credits directly against income & resident tax (net cost: ¥2,000)',
-    descJa: '寄附金合計 — 所得税・住民税から直接控除（実質負担：¥2,000）',
+    descEn: 'Annual donations claimed on a tax return; relief is subject to limits',
+    descJa: '確定申告で申告する年間寄附額（控除には上限があります）',
     inputLabelEn: 'Total Donation (JPY)',
     inputLabelJa: '寄附金合計 (円)',
     inputIsCount: false,
     isTaxCredit: true,
     hasCashCost: true, // full donation leaves user's pocket; tax credits offset (donation-2000) back
-    ntaUrl: 'https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1155.htm',
+    ntaUrl: FURUSATO_RULES.sourceUrl,
   },
   ideco: {
     type: 'ideco',
@@ -113,7 +116,7 @@ export const DEDUCTION_DEFS: Record<DeductionType, DeductionMeta> = {
     inputLabelJa: '月額掛金 (円)',
     inputIsCount: false,
     maxInput: IDECO_MONTHLY_LIMITS.selfEmployed,
-    hasCashCost: true,  // contributions go into a locked account, reducing disposable income
+    hasCashCost: true, // contributions go into a locked account, reducing disposable income
     ntaUrl: 'https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1135.htm',
   },
   spouse: {
@@ -130,6 +133,8 @@ export const DEDUCTION_DEFS: Record<DeductionType, DeductionMeta> = {
   },
   dependent_general: {
     type: 'dependent_general',
+    residentAmount: 330000,
+    personalDifference: 50000,
     nameEn: 'Dependent (General, age 16–18 / 23+)',
     nameJa: '扶養控除 (一般 16〜18歳 / 23歳以上)',
     descEn: '¥380,000 per person',
@@ -141,6 +146,8 @@ export const DEDUCTION_DEFS: Record<DeductionType, DeductionMeta> = {
   },
   dependent_specified: {
     type: 'dependent_specified',
+    residentAmount: 450000,
+    personalDifference: 180000,
     nameEn: 'Dependent (Specified, age 19–22)',
     nameJa: '扶養控除 (特定 19〜22歳)',
     descEn: '¥630,000 per person',
@@ -152,6 +159,8 @@ export const DEDUCTION_DEFS: Record<DeductionType, DeductionMeta> = {
   },
   dependent_aged: {
     type: 'dependent_aged',
+    residentAmount: 380000,
+    personalDifference: 100000,
     nameEn: 'Dependent (Aged, 70+)',
     nameJa: '扶養控除 (老人 70歳以上)',
     descEn: '¥480,000 per person (cohabiting: ¥580,000)',
@@ -174,7 +183,7 @@ export const DEDUCTION_DEFS: Record<DeductionType, DeductionMeta> = {
     hasWizard: true,
     ntaUrl: 'https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1211-1.htm',
   },
-};
+}
 
 export const DEDUCTION_ORDER: DeductionType[] = [
   'ideco',
@@ -187,74 +196,74 @@ export const DEDUCTION_ORDER: DeductionType[] = [
   'dependent_general',
   'dependent_specified',
   'dependent_aged',
-];
+]
 
 /**
- * Compute the allowable deduction amount given a user input and the gross income.
+ * Compute the allowable deduction amount given a user input and total income (after employment expenses).
  * All values in JPY.
  */
 export function calculateDeductionAmount(
   type: DeductionType,
   value: number,
-  annualGross: number,
+  totalIncome: number,
   idecoMonthlyLimit: number = IDECO_MONTHLY_LIMITS.employee,
 ): number {
-  if (!value || value <= 0) return 0;
+  if (!value || value <= 0) return 0
 
   switch (type) {
     case 'life_insurance': {
       // New-contract calculation (each category max ¥40,000, 3 categories max ¥120,000 total)
       // Simplified: treat entire premium as one category
-      let d = 0;
-      if (value <= 20000) d = value;
-      else if (value <= 40000) d = value * 0.5 + 10000;
-      else if (value <= 80000) d = value * 0.25 + 20000;
-      else d = 40000;
-      return Math.min(d, 40000); // single-category cap; user may have multiple categories
+      let d = 0
+      if (value <= 20000) d = value
+      else if (value <= 40000) d = value * 0.5 + 10000
+      else if (value <= 80000) d = value * 0.25 + 20000
+      else d = 40000
+      return Math.min(d, 40000) // single-category cap; user may have multiple categories
     }
 
     case 'earthquake_insurance':
-      return Math.min(value, 50000);
+      return Math.min(value, 50000)
 
     case 'medical_expense': {
-      const threshold = Math.max(annualGross * 0.05, 100000);
-      return Math.max(0, Math.min(value - threshold, 2000000));
+      const threshold = Math.min(totalIncome * 0.05, 100000)
+      return Math.max(0, Math.min(value - threshold, 2000000))
     }
 
     case 'furusato':
       // Income tax deduction: donation - 2,000 (simplified; doesn't include resident tax credit)
-      return Math.max(0, value - 2000);
+      return Math.max(0, value - 2000)
 
     case 'ideco':
-      return Math.min(value, idecoMonthlyLimit) * 12;
+      return Math.min(value, idecoMonthlyLimit) * 12
 
     case 'spouse': {
       // Spouse income determines deduction; assumes taxpayer gross ≤ ¥9M for full bracket
-      const spouseIncome = value;
-      if (spouseIncome <= 480000) return 380000;
-      if (spouseIncome <= 1050000) return 360000;
-      if (spouseIncome <= 1150000) return 310000;
-      if (spouseIncome <= 1250000) return 260000;
-      if (spouseIncome <= 1350000) return 210000;
-      if (spouseIncome <= 1330000) return 160000;
-      return 0;
+      const spouseIncome = value
+      if (spouseIncome <= 480000) return 380000
+      if (spouseIncome <= 1050000) return 360000
+      if (spouseIncome <= 1150000) return 310000
+      if (spouseIncome <= 1250000) return 260000
+      if (spouseIncome <= 1350000) return 210000
+      if (spouseIncome <= 1330000) return 160000
+      return 0
     }
 
     case 'dependent_general':
-      return Math.floor(value) * 380000;
+      return Math.floor(value) * 380000
 
     case 'dependent_specified':
-      return Math.floor(value) * 630000;
+      return Math.floor(value) * 630000
 
     case 'dependent_aged':
-      return Math.floor(value) * 480000;
+      return Math.floor(value) * 480000
 
     case 'home_loan':
       // Tax credit — handled separately via calculateHomeLoanCredit()
-      return 0;
+      return 0
 
     default:
-      return 0;
+      return 0
   }
 }
 
@@ -263,15 +272,42 @@ export function calculateDeductionAmount(
  * This is separate from the tax deduction amount — it represents money that leaves the user's
  * disposable income even though it is not a "withholding" in the payroll sense.
  */
-export function getCashCost(entry: DeductionEntry, idecoMonthlyLimit: number = IDECO_MONTHLY_LIMITS.employee): number {
-  if (!DEDUCTION_DEFS[entry.type].hasCashCost) return 0;
-  if (!entry.value || entry.value <= 0) return 0;
+export function getCashCost(
+  entry: DeductionEntry,
+  idecoMonthlyLimit: number = IDECO_MONTHLY_LIMITS.employee,
+): number {
+  if (!DEDUCTION_DEFS[entry.type].hasCashCost) return 0
+  if (!entry.value || entry.value <= 0) return 0
   switch (entry.type) {
     case 'ideco':
-      return Math.min(entry.value, idecoMonthlyLimit) * 12;
+      return Math.min(entry.value, idecoMonthlyLimit) * 12
     case 'furusato':
-      return entry.value; // full donation amount goes out of pocket; tax credits offset it partially
+      return entry.value // full donation amount goes out of pocket; tax credits offset it partially
     default:
-      return 0;
+      return 0
   }
+}
+
+/** Resident-tax amounts for the same simplified deduction categories as the UI.
+ * https://www.pref.hiroshima.lg.jp/site/zei/kojinkenmin.html
+ * Medical/iDeCo deductions are identical for the two taxes.
+ */
+export function calculateResidentDeductionAmount(
+  type: DeductionType,
+  value: number,
+  totalIncome: number,
+  idecoMonthlyLimit = IDECO_MONTHLY_LIMITS.employee as number,
+): number {
+  if (!value || value <= 0 || DEDUCTION_DEFS[type].isTaxCredit) return 0
+  const perPerson = DEDUCTION_DEFS[type].residentAmount
+  if (perPerson !== undefined) return Math.floor(value) * perPerson
+  if (type === 'life_insurance') {
+    if (value <= 12000) return value
+    if (value <= 32000) return value * 0.5 + 6000
+    if (value <= 56000) return value * 0.25 + 14000
+    return 28000
+  }
+  if (type === 'earthquake_insurance') return Math.min(value * 0.5, 25000)
+  if (type === 'spouse') return Math.min(calculateDeductionAmount(type, value, totalIncome), 330000)
+  return calculateDeductionAmount(type, value, totalIncome, idecoMonthlyLimit)
 }
